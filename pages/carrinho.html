@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Carrinho | Vidal Design Solutions</title>
+    
+    <!-- Estilos Base -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/responsive.css">
+
+    <!-- Supabase CDN e Biblioteca HTML2PDF para o Documento Oficial -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        .cart-page-container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .cart-content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+        @media (max-width: 850px) {
+            .cart-content-grid { grid-template-columns: 1fr; }
+        }
+        .cart-table-wrapper {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            overflow-x: auto;
+        }
+        .cart-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .cart-table th {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 2px solid #eee;
+            color: #555;
+        }
+        .cart-table td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+        .cart-product-cell {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .cart-item-thumb {
+            width: 70px;
+            height: 70px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 1px solid #eee;
+        }
+        .art-tag {
+            color: #e65100;
+            font-weight: bold;
+        }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-qty {
+            background: #eee;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-remove-item {
+            background: transparent;
+            border: none;
+            color: #d32f2f;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        /* Resumo e Checkout */
+        .cart-summary-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            height: fit-content;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .summary-total-row {
+            border-top: 2px solid #eee;
+            padding-top: 14px;
+            margin-top: 14px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #d84315;
+        }
+
+        /* Modalidades de Recebimento */
+        .delivery-options-box {
+            background: #f9f9f9;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 18px 0;
+        }
+        .delivery-options-box label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Botões de Ação Duplo Checkout */
+        .checkout-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .btn-checkout-mp {
+            background: #009ee3;
+            color: #fff;
+            border: none;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-checkout-wpp {
+            background: #25d366;
+            color: #fff;
+            border: none;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .empty-cart-message {
+            text-align: center;
+            padding: 60px 20px;
+            background: #fff;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Cabeçalho -->
+    <header class="main-header">
+        <div class="header-container">
+            <a href="../index.html" class="logo-link">
+                <img src="../logo_cabecalho.png" alt="Vidal Design Solutions" class="site-logo">
+            </a>
+            <nav class="main-nav">
+                <a href="../index.html">← Continuar Comprando</a>
+                <span class="active">🛒 Carrinho</span>
+            </nav>
+        </div>
+    </header>
+
+    <main class="cart-page-container">
+        <h1>Meu Carrinho de Orçamentos</h1>
+
+        <!-- Mensagem de Carrinho Vazio -->
+        <div id="cart-empty-notice" class="empty-cart-message" style="display: none;">
+            <h2>Seu carrinho está vazio</h2>
+            <p>Escolha seus produtos no catálogo e configure as medidas e acabamentos desejados.</p>
+            <a href="../index.html" class="btn-primary" style="display: inline-block; margin-top: 15px; text-decoration: none;">Ver Catálogo</a>
+        </div>
+
+        <!-- Conteúdo do Carrinho -->
+        <div id="cart-content-wrapper" class="cart-content-grid">
+            
+            <!-- Tabela de Itens -->
+            <div class="cart-table-wrapper">
+                <table class="cart-table">
+                    <thead>
+                        <tr>
+                            <th>Produto & Especificações</th>
+                            <th>Valor Unit.</th>
+                            <th>Qtd</th>
+                            <th>Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cart-items-tbody">
+                        <!-- Renderizado via cart.js -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Resumo e Opções de Fechamento -->
+            <div class="cart-summary-card">
+                <h3>Resumo do Pedido</h3>
+
+                <div class="summary-row">
+                    <span>Subtotal Produtos:</span>
+                    <strong id="summary-subtotal">R$ 0,00</strong>
+                </div>
+
+                <div class="summary-row">
+                    <span>Taxa de Arte:</span>
+                    <strong id="summary-art-fee">R$ 0,00</strong>
+                </div>
+
+                <!-- Escolha de Recebimento -->
+                <div class="delivery-options-box">
+                    <strong>Forma de Recebimento:</strong>
+                    <label>
+                        <input type="radio" name="delivery_option" value="retirada" checked>
+                        Retirada na Empresa (Mogi das Cruzes - Grátis)
+                    </label>
+                    <label>
+                        <input type="radio" name="delivery_option" value="entrega">
+                        Entrega no Endereço
+                    </label>
+
+                    <div id="delivery-address-form" style="display: none; margin-top: 10px;">
+                        <input type="text" id="addr-street" placeholder="Rua / Avenida" class="form-control" style="margin-bottom: 6px;">
+                        <input type="text" id="addr-number" placeholder="Número / Complemento" class="form-control" style="margin-bottom: 6px;">
+                        <input type="text" id="addr-neighborhood" placeholder="Bairro" class="form-control" style="margin-bottom: 6px;">
+                        <input type="text" id="addr-city" placeholder="Cidade" class="form-control">
+                    </div>
+                </div>
+
+                <div class="summary-row summary-total-row">
+                    <span>VALOR TOTAL:</span>
+                    <span id="summary-total">R$ 0,00</span>
+                </div>
+
+                <!-- Botões de Checkout Duplo -->
+                <div class="checkout-actions">
+                    <button id="btn-checkout-mercadopago" class="btn-checkout-mp">
+                        💳 Pagar com Mercado Pago
+                    </button>
+                    <button id="btn-checkout-whatsapp" class="btn-checkout-wpp">
+                        💬 Fechar Pedido via WhatsApp
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="../assets/js/supabaseClient.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/cart.js"></script>
+</body>
+</html>
