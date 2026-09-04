@@ -1,378 +1,433 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Vidal Design Solutions - Materiais Gráficos, Sinalização, Toldos e Fachadas. Qualidade e agilidade para seu negócio.">
-    <meta name="keywords" content="gráfica, adesivos, banners, sinalização, toldos, fachadas, São Paulo, Mogi das Cruzes">
-    <meta name="author" content="Vidal Design Solutions">
+// ==============================================================================
+// PROJETO: Vidal Design Solutions V2
+// ARQUIVO: assets/js/products.js
+// OBJETIVO: Catálogo Dinâmico Conectado ao Supabase com Fallback Duplo e Proteção
+// ==============================================================================
+
+let productsData = [];
+let currentProduct = null;
+
+const arteOptions = {
+    id: 'arte',
+    label: 'Opções de Criação de Arte',
+    type: 'radio',
+    obs: '* Arquivos enviados devem estar em alta resolução (PDFx1a, CMYK, curvas).',
+    choices: [
+        { label: 'Já possuo a arte pronta (Enviar no WhatsApp)', price: 0, isM2: false },
+        { label: 'Contratar criação profissional (+ R$ 40,00)', price: 40, isM2: false }
+    ]
+};
+
+function formatCurrencyProduct(value) {
+    if (value === null || value === undefined || isNaN(value)) return '🔒 Sob consulta';
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+}
+
+function initModalStructure() {
+    if (document.getElementById('productModal')) return;
+    const modalHTML = `
+    <div id="productModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            <div id="modalBody"></div>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// Carregamento com Fallback Duplo (Nunca quebra)
+async function loadProductsFromSupabase() {
+    const productsGrid = document.getElementById('productsGrid');
+    if (!productsGrid) return;
+
+    productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-600);"><i class="fas fa-spinner fa-spin"></i> Carregando produtos oficiais...</div>';
+
+    try {
+        if (!window.supabaseClient) {
+            console.warn('Supabase Client não inicializado.');
+            return;
+        }
+
+        // Descobre se há usuário logado e qual a modalidade
+        let userRole = 'guest';
+        if (window.AuthController) {
+            const user = await window.AuthController.getCurrentUser();
+            if (user) {
+                const profile = await window.AuthController.getUserProfile(user.id);
+                if (profile && profile.status === 'aprovado') userRole = profile.role;
+                else if (profile && profile.role === 'master') userRole = 'master';
+            }
+        }
+
+        let rawProducts = null;
+
+        // 1. Tenta buscar via RPC
+        try {
+            const { data, error } = await window.supabaseClient.rpc('v2_get_catalog');
+            if (!error && data && data.length > 0) {
+                rawProducts = data;
+            }
+        } catch (e) {}
+
+        // 2. Se a RPC não responder, busca direto na tabela v2_products
+        if (!rawProducts) {
+            const { data: tableData, error: tableErr } = await window.supabaseClient
+                .from('v2_products')
+                .select('*')
+                .eq('is_active', true)
+                .order('name');
+
+            if (tableErr) throw tableErr;
+
+            rawProducts = (tableData || []).map(p => {
+                const cost = Number(p.base_cost) || 0;
+                let finalDisplayPrice = null;
+                if (userRole === 'revenda') finalDisplayPrice = cost * 1.5;
+                else if (userRole === 'cliente_final' || userRole === 'master') finalDisplayPrice = cost * 2.0;
+
+                return {
+                    id: p.id,
+                    name: p.name,
+                    description: p.description,
+                    calculation_type: p.calculation_type,
+                    production_days: p.production_days,
+                    images: p.images,
+                    display_price: finalDisplayPrice
+                };
+            });
+        }
+
+        if (rawProducts && rawProducts.length > 0) {
+            productsData = rawProducts.map(p => {
+                let cat = 'geral';
+                const nameLow = p.name.toLowerCase();
+                if (nameLow.includes('adesivo') || nameLow.includes('dtf')) cat = 'adesivos';
+                else if (nameLow.includes('banner') || nameLow.includes('lona') || nameLow.includes('wind')) cat = 'banners';
+                else if (nameLow.includes('cartão') || nameLow.includes('folheto')) cat = 'papelaria';
+                else if (nameLow.includes('automotivo') || nameLow.includes('tapete') || nameLow.includes('perfume') || nameLow.includes('aromatizante') || nameLow.includes('lixocar') || nameLow.includes('limpeza')) cat = 'automotivo';
+                else if (nameLow.includes('toldo')) cat = 'toldos';
+                else if (nameLow.includes('camiseta') || nameLow.includes('moletom')) cat = 'vestuario';
+                else if (nameLow.includes('social') || nameLow.includes('arte')) cat = 'social-midia';
+
+                const imagesArr = Array.isArray(p.images) && p.images.length > 0 ? p.images : ['assets/images/produtos/adesivo-branco.jpg'];
+
+                return {
+                    id: p.id,
+                    name: p.name,
+                    category: cat,
+                    description: p.description || 'Comunicação visual de alta resolução.',
+                    calcType: p.calculation_type === 'sqm' ? 'area' : (p.calculation_type === 'linear_meter' ? 'linear' : 'unit'),
+                    basePrice: p.display_price !== null ? Number(p.display_price) : null,
+                    productionDays: p.production_days || 2,
+                    image: imagesArr[0],
+                    options: [
+                        {
+                            id: 'acabamento',
+                            label: 'Material / Acabamento:',
+                            type: 'select',
+                            choices: [
+                                { label: 'Padrão da Categoria', price: 0 },
+                                { label: 'Laminação Extra', price: 10, isM2: true },
+                                { label: 'Personalizável / Outro (Definir no WhatsApp)', price: 0 }
+                            ]
+                        },
+                        arteOptions
+                    ]
+                };
+            });
+
+            renderProducts(productsData);
+        } else {
+            productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">Nenhum produto disponível no momento.</div>';
+        }
+
+    } catch (err) {
+        console.error('Erro ao carregar catálogo:', err);
+        productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">Erro de conexão com o catálogo. Recarregue a página.</div>';
+    }
+}
+
+function renderProducts(productsToRender) {
+    const productsGrid = document.getElementById('productsGrid');
+    if (!productsGrid) return;
     
-    <title>Vidal Design Solutions | Comunicação Visual</title>
+    productsGrid.innerHTML = '';
     
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/png" href="logo.png">
+    if (!productsToRender.length) {
+        productsGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">Nenhum produto nesta categoria.</div>`;
+        return;
+    }
     
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/responsive.css">
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <style>
-        .logo-header { display: flex; align-items: center; height: 60px; }
-        .logo-header img { height: 100%; width: auto; max-width: 220px; object-fit: contain; }
-        .logo-footer { display: flex; align-items: center; height: 50px; margin-bottom: 1rem; }
-        .logo-footer img { height: 100%; width: auto; max-width: 180px; object-fit: contain; }
-        .category-card { cursor: pointer; }
-
-        .top-auth-bar {
-            background: #0f172a;
-            color: #e2e8f0;
-            padding: 8px 0;
-            font-size: 13px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            z-index: 1001;
+    productsToRender.forEach((product, index) => {
+        const card = document.createElement('div');
+        card.className = 'product-card animate-in';
+        card.style.animationDelay = `${index * 0.05}s`;
+        
+        let displayPriceHTML = '';
+        if (product.basePrice === null) {
+            displayPriceHTML = `
+                <div class="product-price">
+                    <span class="price-label">Preço Comercial</span>
+                    <span class="price-value" style="font-size: 1rem; color: #6b7280;"><i class="fas fa-lock"></i> Sob consulta</span>
+                </div>
+            `;
+        } else {
+            let priceUnit = product.calcType === 'area' ? '/ m²' : (product.calcType === 'linear' ? '/ metro' : '');
+            displayPriceHTML = `
+                <div class="product-price">
+                    <span class="price-label">A partir de</span>
+                    <span class="price-value">${formatCurrencyProduct(product.basePrice)} <span style="font-size: 0.7em;">${priceUnit}</span></span>
+                </div>
+            `;
         }
-        .top-auth-inner {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .auth-status-pill {
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-        .badge-guest { background: #334155; color: #cbd5e1; }
-        .badge-pending { background: #ea580c; color: #fff; }
-        .badge-cliente { background: #2563eb; color: #fff; }
-        .badge-revenda { background: #16a34a; color: #fff; }
-        .badge-master { background: #9333ea; color: #fff; }
-        .badge-blocked { background: #dc2626; color: #fff; }
-
-        .auth-buttons-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-google-login {
-            display: inline-flex;
-            align-items: center;
-            background: #ffffff;
-            color: #1e293b;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 12px;
-            cursor: pointer;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-        .btn-signup-direct {
-            background: #f97316;
-            color: #fff;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        .btn-admin-pill {
-            background: #9333ea;
-            color: #fff !important;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 700;
-            text-decoration: none;
-        }
-        .btn-logout-pill {
-            background: transparent;
-            color: #94a3b8;
-            border: 1px solid #475569;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            cursor: pointer;
-        }
-
-        /* Modal de Cadastro */
-        .modal-register-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(4px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-        }
-        .modal-register-box {
-            background: #ffffff;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 92%;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-            color: #1e293b;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .role-choice-card {
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }
-        .role-choice-card.selected {
-            border-color: #f97316;
-            background: #fff7ed;
-        }
-    </style>
-</head>
-<body>
-
-    <!-- Top Bar -->
-    <div class="top-auth-bar">
-        <div class="container top-auth-inner">
-            <span><i class="fas fa-shield-alt" style="color: var(--secondary);"></i> Vidal Design Solutions • Portal V2</span>
-            <div id="auth-user-container">
-                <div class="auth-buttons-group">
-                    <span class="auth-status-pill badge-guest">🔒 Preços Ocultos</span>
-                    <button id="btn-login-google" class="btn-google-login" onclick="window.AuthController.loginWithGoogle()">
-                        <i class="fab fa-google" style="color: #ea4335; margin-right: 6px;"></i> Entrar
+        
+        card.innerHTML = `
+            <div class="product-image">
+                <span class="product-badge">${product.category}</span>
+                <img src="${product.image}" alt="${product.name}" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.src='logo.png'">
+            </div>
+            <div class="product-info">
+                <h3 class="product-title">${product.name}</h3>
+                <p class="product-description">${product.description}</p>
+                <div class="product-footer">
+                    ${displayPriceHTML}
+                    <button class="product-btn config-btn" data-id="${product.id}">
+                        <i class="fas fa-cog"></i> Configurar
                     </button>
-                    <button class="btn-signup-direct" onclick="openRegisterModal()">
-                        <i class="fas fa-user-plus"></i> Cadastre-se
-                    </button>
                 </div>
             </div>
-        </div>
-    </div>
+        `;
+        productsGrid.appendChild(card);
+    });
+    
+    document.querySelectorAll('.config-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => openModal(e.currentTarget.getAttribute('data-id')));
+    });
+}
 
-    <!-- Cabeçalho -->
-    <header class="header" id="header" style="top: 37px;">
-        <div class="container">
-            <div class="header-content">
-                <a href="#" class="logo-header">
-                    <img src="logo_cabecalho.png" alt="Vidal Design Solutions - Logo" onerror="this.src='logo.png'">
-                </a>
-                <nav class="nav-menu" id="navMenu">
-                    <ul class="nav-list">
-                        <li><a href="#home" class="nav-link active">Home</a></li>
-                        <li><a href="#produtos" class="nav-link">Produtos</a></li>
-                        <li><a href="#categorias" class="nav-link">Categorias</a></li>
-                        <li><a href="#sobre" class="nav-link">Sobre Nós</a></li>
-                        <li><a href="#contato" class="nav-link">Contato</a></li>
-                    </ul>
-                </nav>
-                <div class="header-actions">
-                    <a href="pages/carrinho.html" class="cart-btn" id="cartBtn">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span class="cart-count" id="cartCount">0</span>
-                    </a>
-                    <a href="https://wa.me/5511968649673?text=Olá! Vim pelo site e gostaria de fazer um orçamento." class="whatsapp-btn" target="_blank">
-                        <i class="fab fa-whatsapp"></i>
-                        <span class="btn-text">Orçamento</span>
-                    </a>
-                    <button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
+function openModal(productId) {
+    currentProduct = productsData.find(p => p.id === productId);
+    if (!currentProduct) return;
+
+    const modalBody = document.getElementById('modalBody');
+    
+    let dimensionsHTML = '';
+    if (currentProduct.calcType === 'area') {
+        dimensionsHTML = `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Largura (cm)</label>
+                    <input type="number" id="calcW" value="100" min="10" step="1" onchange="calcTotal()" onkeyup="calcTotal()">
+                </div>
+                <div class="form-group">
+                    <label>Altura (cm)</label>
+                    <input type="number" id="calcH" value="100" min="10" step="1" onchange="calcTotal()" onkeyup="calcTotal()">
                 </div>
             </div>
-        </div>
-    </header>
+            <div class="form-group" style="margin-top: -0.5rem;">
+                <label style="color: var(--primary); font-weight: 700;">Quantidade de Peças</label>
+                <input type="number" id="calcQty" value="1" min="1" step="1" onchange="calcTotal()" onkeyup="calcTotal()" style="border-color: var(--primary);">
+            </div>`;
+    } else if (currentProduct.calcType === 'linear') {
+        dimensionsHTML = `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Largura Total (cm lineares)</label>
+                    <input type="number" id="calcW" value="100" min="10" step="1" onchange="calcTotal()" onkeyup="calcTotal()">
+                </div>
+                <div class="form-group">
+                    <label style="color: var(--primary); font-weight: 700;">Quantidade</label>
+                    <input type="number" id="calcQty" value="1" min="1" step="1" onchange="calcTotal()" onkeyup="calcTotal()" style="border-color: var(--primary);">
+                </div>
+            </div>`;
+    } else {
+        dimensionsHTML = `
+            <div class="form-group">
+                <label style="color: var(--primary); font-weight: 700;">Quantidade</label>
+                <input type="number" id="calcQty" value="1" min="1" step="1" onchange="calcTotal()" onkeyup="calcTotal()" style="border-color: var(--primary);">
+            </div>`;
+    }
 
-    <!-- Hero Banner -->
-    <section class="hero" id="home" style="padding-top: 10rem;">
-        <div class="hero-bg"></div>
-        <div class="container">
-            <div class="hero-content">
-                <div class="hero-text">
-                    <span class="hero-tag">Desde 2007</span>
-                    <h1 class="hero-title">Soluções em <span class="highlight">Comunicação Visual</span> que fazem seu negócio brilhar</h1>
-                    <p class="hero-description">Atendimento de alta qualidade, sinalização profissional, toldos, fachadas, impressos e social mídia com entrega rápida.</p>
-                    <div class="hero-buttons">
-                        <a href="#produtos" class="btn btn-primary"><i class="fas fa-shopping-bag"></i> Ver Produtos</a>
-                        <a href="https://wa.me/5511968649673?text=Olá! Vim pelo site e gostaria de fazer um orçamento." class="btn btn-secondary" target="_blank"><i class="fab fa-whatsapp"></i> Falar no WhatsApp</a>
-                    </div>
-                </div>
-                <div class="hero-image">
-                    <img src="assets/images/produtos/imagem-hero.jpg" alt="Vidal Design Solutions" style="width: 100%; border-radius: var(--radius-2xl); box-shadow: var(--shadow-2xl);" onerror="this.src='https://via.placeholder.com/600x450/1e3a8a/ffffff?text=Vidal+Design+Solutions'">
-                </div>
-            </div>
-        </div>
-    </section>
+    let optionsHTML = '';
+    currentProduct.options.forEach((opt, optIndex) => {
+        optionsHTML += `<div class="form-group"><label>${opt.label}</label>`;
+        if (opt.obs) optionsHTML += `<p style="font-size:0.75rem; color:#ef4444; margin-bottom:0.5rem; line-height:1.2;">${opt.obs}</p>`;
+        
+        if (opt.type === 'select') {
+            optionsHTML += `<select id="opt_${optIndex}" onchange="calcTotal()">`;
+            opt.choices.forEach((choice, choiceIndex) => {
+                optionsHTML += `<option value="${choiceIndex}">${choice.label}</option>`;
+            });
+            optionsHTML += `</select></div>`;
+        } else if (opt.type === 'radio') {
+            opt.choices.forEach((choice, choiceIndex) => {
+                let checked = choiceIndex === 0 ? 'checked' : '';
+                optionsHTML += `
+                <label class="radio-label">
+                    <input type="radio" name="opt_${optIndex}" value="${choiceIndex}" ${checked} onchange="calcTotal()">
+                    ${choice.label}
+                </label>`;
+            });
+            optionsHTML += `</div>`;
+        }
+    });
 
-    <!-- Categorias -->
-    <section class="categories" id="categorias">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">Nossas Especialidades</span>
-                <h2 class="section-title">Categorias em Destaque</h2>
-            </div>
-            <div class="categories-grid">
-                <div class="category-card" onclick="filterByCategory('adesivos')">
-                    <div class="category-icon"><i class="fas fa-sticky-note"></i></div>
-                    <h3>Adesivos</h3>
-                    <span class="category-count">Ver produtos</span>
-                </div>
-                <div class="category-card" onclick="filterByCategory('banners')">
-                    <div class="category-icon"><i class="fas fa-scroll"></i></div>
-                    <h3>Banners e Lonas</h3>
-                    <span class="category-count">Ver produtos</span>
-                </div>
-                <div class="category-card" onclick="filterByCategory('papelaria')">
-                    <div class="category-icon"><i class="fas fa-file-alt"></i></div>
-                    <h3>Papelaria</h3>
-                    <span class="category-count">Ver produtos</span>
-                </div>
-                <div class="category-card" onclick="filterByCategory('automotivo')">
-                    <div class="category-icon"><i class="fas fa-car"></i></div>
-                    <h3>Automotivo</h3>
-                    <span class="category-count">Ver produtos</span>
-                </div>
-            </div>
+    const isLocked = currentProduct.basePrice === null;
+    const footerHTML = isLocked ? `
+        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 1rem; border-radius: var(--radius-md); text-align: center; margin-top: 1.5rem;">
+            <p style="color: #b91c1c; font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem;">
+                <i class="fas fa-lock"></i> Preços protegidos para visitantes
+            </p>
+            <p style="color: #6b7280; font-size: 0.85rem; margin-bottom: 1rem;">
+                Faça login com sua conta Google ou cadastre-se para liberar orçamentos e pedidos.
+            </p>
+            <button class="btn btn-primary" onclick="closeModal(); window.AuthController.loginWithGoogle();">
+                <i class="fab fa-google"></i> Entrar com Google
+            </button>
         </div>
-    </section>
-
-    <!-- Catálogo de Produtos -->
-    <section class="products" id="produtos">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">Catálogo 2026</span>
-                <h2 class="section-title">Nossos Produtos</h2>
-            </div>
-            <div class="products-grid" id="productsGrid"></div>
+    ` : `
+        <div class="modal-footer">
+            <div class="modal-total">Total Estimado: <span id="modalTotalPrice">R$ 0,00</span></div>
+            <button class="btn btn-primary" onclick="confirmModalCart()">Adicionar ao Orçamento</button>
         </div>
-    </section>
+    `;
 
-    <!-- Sobre Nós -->
-    <section class="about" id="sobre">
-        <div class="container">
-            <div class="about-content">
-                <div class="about-image" style="position: relative; overflow: hidden; border-radius: var(--radius-2xl); box-shadow: var(--shadow-2xl);">
-                    <img id="aboutSlider" src="assets/images/sobre-1.jpg" alt="Estrutura Vidal Design Solutions" style="width: 100%; aspect-ratio: 4/3; object-fit: cover;" onerror="this.src='https://via.placeholder.com/800x600/1e3a8a/ffffff?text=Vidal+Design'">
-                </div>
-                <div class="about-text">
-                    <span class="section-tag">Sobre Nós</span>
-                    <h2 class="section-title">Vidal Design Solutions</h2>
-                    <p class="about-description">Com mais de <strong>18 anos de experiência</strong>, fundada em 2007 por Gilney e Elizete Vidal. Qualidade, agilidade e fabricação própria de adesivos, banners, fachadas e sinalização.</p>
-                </div>
-            </div>
+    modalBody.innerHTML = `
+        <h2 style="margin-bottom: 0.5rem;">${currentProduct.name}</h2>
+        <p style="color: var(--gray-600); font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.6;">${currentProduct.description}</p>
+        <div style="border-top: 1px solid var(--gray-200); padding-top: 1.5rem;">
+            ${dimensionsHTML}${optionsHTML}
         </div>
-    </section>
+        <div id="modalSummary" style="background: var(--gray-50); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--gray-200); margin-top: 1.5rem; font-size: 0.9rem; color: var(--gray-700); line-height: 1.5;"></div> 
+        ${footerHTML}
+    `;
+    
+    document.getElementById('productModal').classList.remove('hidden');
+    if (!isLocked) calcTotal();
+}
 
-    <!-- Rodapé -->
-    <footer class="footer" id="contato">
-        <div class="container">
-            <p style="text-align: center; color: #94a3b8;">© 2026 Vidal Design Solutions. Mogi das Cruzes - SP | (11) 96864-9673</p>
-        </div>
-    </footer>
+function closeModal() {
+    const modal = document.getElementById('productModal');
+    if (modal) modal.classList.add('hidden');
+}
 
-    <!-- Modal de Cadastro & Triagem -->
-    <div id="modal-register-flow" class="modal-register-overlay">
-        <div class="modal-register-box">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2 style="font-size: 18px; font-weight: 800; margin: 0;">Cadastro de Cliente / Revenda</h2>
-                <button type="button" onclick="closeRegisterModal()" style="background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
-            </div>
-            <form id="form-user-register">
-                <div class="role-choice-card selected" id="card-choice-cliente" onclick="selectRoleChoice('cliente_final')">
-                    <input type="radio" name="reg_role" value="cliente_final" checked>
-                    <div>
-                        <strong>Cliente Final (Empresas & Consumidor)</strong>
-                        <small style="display:block; color:#64748b; font-size:11px;">Acesso à tabela de cliente final.</small>
-                    </div>
-                </div>
-                <div class="role-choice-card" id="card-choice-revenda" onclick="selectRoleChoice('revenda')">
-                    <input type="radio" name="reg_role" value="revenda">
-                    <div>
-                        <strong>Revendedor Gráfico (+50% de margem)</strong>
-                        <small style="display:block; color:#64748b; font-size:11px;">Exige comprovação de no mínimo 3 clientes ativos.</small>
-                    </div>
-                </div>
-                <input type="text" id="reg-name" placeholder="Seu Nome Completo" required style="width:100%; padding:8px; margin:8px 0; border:1px solid #cbd5e1; border-radius:4px;">
-                <input type="text" id="reg-phone" placeholder="Telefone / WhatsApp" required style="width:100%; padding:8px; margin:8px 0; border:1px solid #cbd5e1; border-radius:4px;">
-                <input type="text" id="reg-city" placeholder="Cidade - Estado" required style="width:100%; padding:8px; margin:8px 0; border:1px solid #cbd5e1; border-radius:4px;">
-                <div id="box-proof-upload" style="display:none; background:#f8fafc; padding:12px; border-radius:6px; margin:8px 0; border:1px dashed #cbd5e1;">
-                    <label style="font-size:12px; font-weight:700; color:#ea580c;">Comprovante (Foto ou PDF de 3 clientes ativos):</label>
-                    <input type="file" id="reg-proof-file" accept="image/*,.pdf" style="font-size:12px; margin-top:6px;">
-                    <small style="display:block; font-size:10px; color:#64748b; margin-top:4px;">🔒 LGPD: O arquivo é descartado permanentemente após a análise manual.</small>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:10px;">Enviar para Triagem</button>
-            </form>
-        </div>
-    </div>
+function calcTotal() {
+    if (!currentProduct || currentProduct.basePrice === null) return;
+    
+    let w_cm = document.getElementById('calcW') ? parseFloat(document.getElementById('calcW').value) || 0 : 0;
+    let h_cm = document.getElementById('calcH') ? parseFloat(document.getElementById('calcH').value) || 0 : 0;
+    let qty = document.getElementById('calcQty') ? parseInt(document.getElementById('calcQty').value) || 1 : 1;
+    if (qty < 1) qty = 1;
 
-    <!-- Scripts -->
-    <script src="assets/js/supabaseClient.js"></script>
-    <script src="assets/js/auth.js"></script>
-    <script src="assets/js/main.js"></script>
-    <script src="assets/js/cart.js"></script>
-    <script src="assets/js/products.js"></script>
-    <script>
-        function openRegisterModal() { document.getElementById('modal-register-flow').style.display = 'flex'; }
-        function closeRegisterModal() { document.getElementById('modal-register-flow').style.display = 'none'; }
-        function selectRoleChoice(role) {
-            document.querySelectorAll('.role-choice-card').forEach(c => c.classList.remove('selected'));
-            const r = document.querySelector(`input[name="reg_role"][value="${role}"]`);
-            if (r) r.checked = true;
-            if (role === 'revenda') {
-                document.getElementById('card-choice-revenda').classList.add('selected');
-                document.getElementById('box-proof-upload').style.display = 'block';
-            } else {
-                document.getElementById('card-choice-cliente').classList.add('selected');
-                document.getElementById('box-proof-upload').style.display = 'none';
+    let multiplier = 0;
+    let summaryText = `<strong>Resumo da seleção:</strong><br>`;
+    
+    if (currentProduct.calcType === 'area') {
+        let areaM2 = (w_cm / 100) * (h_cm / 100);
+        let totalAreaLote = areaM2 * qty;
+        summaryText += `- <strong>Medidas:</strong> ${w_cm}cm x${h_cm}cm<br>`;
+        summaryText += `- <strong>Quantidade:</strong> ${qty} peça(s)<br>`;
+        if (w_cm > 0 && h_cm > 0) multiplier = totalAreaLote < 0.5 ? 0.5 : totalAreaLote; 
+    } else if (currentProduct.calcType === 'linear') {
+        let totalLinear = (w_cm / 100) * qty;
+        summaryText += `- <strong>Largura:</strong> ${w_cm}cm lineares<br>`;
+        summaryText += `- <strong>Quantidade:</strong> ${qty} peça(s)<br>`;
+        if (w_cm > 0) multiplier = totalLinear;
+    } else {
+        multiplier = qty;
+        summaryText += `- <strong>Quantidade:</strong> ${qty} unidade(s)<br>`;
+    }
+
+    let base = currentProduct.basePrice;
+    let extraM2 = 0;
+    let extraFlat = 0;
+
+    currentProduct.options.forEach((opt, optIndex) => {
+        let selectedIndex = 0;
+        if (opt.type === 'select') {
+            const el = document.getElementById(`opt_${optIndex}`);
+            if (el) selectedIndex = parseInt(el.value);
+        } else if (opt.type === 'radio') {
+            let radios = document.getElementsByName(`opt_${optIndex}`);
+            for (let r of radios) { if (r.checked) selectedIndex = parseInt(r.value); }
+        }
+        
+        let choice = opt.choices[selectedIndex];
+        if (choice) {
+            let cleanLabel = opt.label.replace(':', '');
+            summaryText += `- <strong>${cleanLabel}:</strong>${choice.label}<br>`;
+            if (choice.price > 0) {
+                if (choice.isM2) extraM2 += choice.price;
+                else extraFlat += choice.price;
             }
         }
-        document.getElementById('form-user-register')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const user = await window.AuthController?.getCurrentUser();
-            if (!user) {
-                alert('Primeiro autentique com o Google para vincular seu cadastro com segurança.');
-                window.AuthController?.loginWithGoogle();
-                return;
-            }
-            const role = document.querySelector('input[name="reg_role"]:checked').value;
-            const name = document.getElementById('reg-name').value;
-            const phone = document.getElementById('reg-phone').value;
-            const city = document.getElementById('reg-city').value;
-            const fileInput = document.getElementById('reg-proof-file');
-            
-            let proofFileName = null;
-            if (role === 'revenda' && fileInput.files.length > 0) {
-                const f = fileInput.files[0];
-                proofFileName = `${user.id}_comprovante_${Date.now()}.${f.name.split('.').pop()}`;
-                await window.supabaseClient.storage.from('reseller-proofs').upload(`solicitacoes/${proofFileName}`, f);
-            }
+    });
 
-            await window.supabaseClient.from('v2_profiles').update({
-                full_name: name,
-                phone: phone,
-                address: { cidade: city },
-                requested_role: role,
-                status: 'pendente',
-                notes: proofFileName ? `Comprovante: ${proofFileName}` : 'Cadastro Cliente Final submetido'
-            }).eq('id', user.id);
+    let finalPrice = 0;
+    if (multiplier === 0 && currentProduct.calcType === 'area') {
+        finalPrice = 0;
+    } else {
+        finalPrice = (base * multiplier) + (extraM2 * multiplier) + extraFlat;
+    }
 
-            alert('Cadastro enviado para triagem! O administrador liberará seu acesso em breve.');
-            closeRegisterModal();
-            window.location.reload();
-        });
-        function filterByCategory(cat) {
-            document.getElementById('produtos')?.scrollIntoView({ behavior: 'smooth' });
-            window.dispatchEvent(new CustomEvent('filterProducts', { detail: { category: cat } }));
+    const summaryEl = document.getElementById('modalSummary');
+    const totalEl = document.getElementById('modalTotalPrice');
+    if (summaryEl) summaryEl.innerHTML = summaryText;
+    if (totalEl) totalEl.innerText = formatCurrencyProduct(finalPrice);
+    
+    return { finalPrice, multiplier, w_cm, h_cm, qty };
+}
+
+function confirmModalCart() {
+    const calcData = calcTotal();
+    if (!calcData) return;
+
+    if (currentProduct.calcType === 'area' && (calcData.w_cm === 0 || calcData.h_cm === 0)) {
+        alert("Por favor, preencha as medidas do material antes de adicionar.");
+        return;
+    }
+    
+    let detailsStr = '';
+    currentProduct.options.forEach((opt, optIndex) => {
+        let selectedIndex = 0;
+        if (opt.type === 'select') {
+            const el = document.getElementById(`opt_${optIndex}`);
+            if (el) selectedIndex = parseInt(el.value);
+        } else if (opt.type === 'radio') {
+            let radios = document.getElementsByName(`opt_${optIndex}`);
+            for (let r of radios) { if (r.checked) selectedIndex = parseInt(r.value); }
         }
-    </script>
-</body>
-</html>
+        if (opt.choices[selectedIndex]) {
+            detailsStr += ` | ${opt.choices[selectedIndex].label}`;
+        }
+    });
+
+    let sizeStr = '';
+    if (currentProduct.calcType === 'area') sizeStr = `(${calcData.w_cm}cm x ${calcData.h_cm}cm) -${calcData.qty} un.`;
+    else if (currentProduct.calcType === 'linear') sizeStr = `(${calcData.w_cm}cm linear) -${calcData.qty} un.`;
+    else sizeStr = `- ${calcData.qty} un.`;
+
+    const cartItem = {
+        id: currentProduct.id + '-' + Date.now(),
+        name: `${currentProduct.name} ${sizeStr}${detailsStr}`,
+        category: currentProduct.category,
+        basePrice: calcData.finalPrice,
+        image: currentProduct.image
+    };
+
+    if (typeof addToCart === 'function') {
+        addToCart(cartItem);
+        closeModal();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initModalStructure();
+    loadProductsFromSupabase();
+    
+    window.addEventListener('filterProducts', (e) => {
+        const category = e.detail.category;
+        if (!category || category === 'all') renderProducts(productsData);
+        else renderProducts(productsData.filter(p => p.category === category));
+    });
+});
