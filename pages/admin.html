@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Master | Vidal Design Solutions</title>
+    
+    <!-- Estilos Base -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/responsive.css">
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body { background: #f4f6f9; color: #333; margin: 0; font-family: Arial, sans-serif; }
+        .admin-layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+        @media (max-width: 900px) { .admin-layout { grid-template-columns: 1fr; } }
+        
+        /* Barra Lateral */
+        .admin-sidebar { background: #1a1a1a; color: #fff; padding: 20px 0; }
+        .admin-sidebar-header { padding: 0 20px 20px 20px; border-bottom: 1px solid #333; }
+        .admin-sidebar-header h2 { margin: 0; font-size: 18px; color: #ff9800; }
+        .admin-nav { list-style: none; padding: 0; margin: 20px 0; }
+        .admin-nav-item { display: block; padding: 12px 20px; color: #ccc; text-decoration: none; cursor: pointer; transition: all 0.2s; }
+        .admin-nav-item:hover, .admin-nav-item.active { background: #ff9800; color: #1a1a1a; font-weight: bold; }
+        
+        /* Conteúdo Principal */
+        .admin-main { padding: 30px; }
+        .admin-header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .admin-section { display: none; background: #fff; border-radius: 8px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .admin-section.active { display: block; }
+        
+        /* Tabelas Administrativas */
+        .admin-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        .admin-table th { background: #222; color: #fff; text-align: left; padding: 12px; }
+        .admin-table td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        
+        /* Badges e Botões */
+        .role-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .role-badge.revenda { background: #e8f5e9; color: #2e7d32; }
+        .role-badge.cliente_final { background: #e3f2fd; color: #1565c0; }
+        .role-badge.master { background: #f3e5f5; color: #7b1fa2; }
+        .status-select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; font-weight: bold; }
+        
+        .btn-approve { background: #2e7d32; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 6px; }
+        .btn-reject { background: #c62828; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; border: 1px solid #ccc; background: #fafafa; border-radius: 4px; cursor: pointer; }
+        .search-box { width: 100%; max-width: 350px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        
+        /* Formulários */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .calc-preview { background: #fdf7e7; padding: 15px; border-radius: 6px; border-left: 4px solid #ff9800; margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-layout">
+        <!-- Menu Lateral -->
+        <aside class="admin-sidebar">
+            <div class="admin-sidebar-header">
+                <h2>VIDAL MASTER</h2>
+                <small>Gestão Geral V2</small>
+            </div>
+            <ul class="admin-nav">
+                <li><a class="admin-nav-item active" data-target="sec-pedidos">📦 Pedidos & Operação</a></li>
+                <li><a class="admin-nav-item" data-target="sec-revendas">⭐ Triagem de Revendas</a></li>
+                <li><a class="admin-nav-item" data-target="sec-produtos">🎨 Catálogo & Custos</a></li>
+                <li><a class="admin-nav-item" data-target="sec-usuarios">👥 Todos os Usuários</a></li>
+                <li><a class="admin-nav-item" data-target="sec-config">⚙️ Regras Globais</a></li>
+                <li><a href="../index.html" class="admin-nav-item">🌐 Ver Loja Pública</a></li>
+            </ul>
+        </aside>
+
+        <!-- Área de Conteúdo -->
+        <main class="admin-main">
+            <div class="admin-header-bar">
+                <h1>Painel Master de Administração</h1>
+                <span>Administrador: <strong id="admin-user-name">Gilney Vidal</strong></span>
+            </div>
+
+            <!-- SEÇÃO 1: PEDIDOS -->
+            <section id="sec-pedidos" class="admin-section active">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>Gerenciamento de Pedidos</h2>
+                    <input type="text" id="admin-order-search" class="search-box" placeholder="Buscar por ID #VDL-..., cliente ou status...">
+                </div>
+
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID do Pedido</th>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th>Modalidade</th>
+                            <th>Total</th>
+                            <th>Status da Produção</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-orders-tbody">
+                        <!-- Renderizado via admin.js -->
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- SEÇÃO 2: TRIAGEM DE REVENDA -->
+            <section id="sec-revendas" class="admin-section">
+                <h2>Solicitações de Revenda (Triagem Manual)</h2>
+                <p class="text-muted">Aprove ou reprove. Conforme a LGPD, o arquivo de comprovação é <strong>descartado imediatamente</strong> após a sua decisão.</p>
+
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nome do Solicitante</th>
+                            <th>E-mail</th>
+                            <th>Telefone</th>
+                            <th>Observações / Documento</th>
+                            <th>Decisão do Administrador</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-resellers-tbody">
+                        <!-- Renderizado via admin.js -->
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- SEÇÃO 3: CATÁLOGO DE PRODUTOS -->
+            <section id="sec-produtos" class="admin-section">
+                <h2>Cadastro e Gestão de Produtos</h2>
+                <p class="text-muted">Cadastre apenas o <strong>Preço de Custo</strong>. O sistema calcula a Revenda (+50%) e o Cliente Final (+100%) automaticamente.</p>
+
+                <form id="form-new-product" style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                    <h3>Novo Produto no Catálogo</h3>
+                    <div class="form-grid">
+                        <div>
+                            <label>Nome do Produto:</label>
+                            <input type="text" name="name" class="form-control" required style="width: 100%; margin-bottom: 10px;">
+
+                            <label>Preço de Custo (R$):</label>
+                            <input type="number" step="0.01" id="new-prod-cost" name="base_cost" class="form-control" required style="width: 100%; margin-bottom: 10px;">
+
+                            <label>Tipo de Cálculo:</label>
+                            <select name="calculation_type" class="form-control" style="width: 100%; margin-bottom: 10px;">
+                                <option value="unit">Por Unidade</option>
+                                <option value="sqm">Por Metro Quadrado (m²)</option>
+                                <option value="linear_meter">Por Metro Linear</option>
+                                <option value="pack">Por Pacote / Lote</option>
+                            </select>
+
+                            <label>Prazo de Produção do Fornecedor (dias úteis):</label>
+                            <input type="number" name="production_days" value="2" class="form-control" style="width: 100%; margin-bottom: 10px;">
+                        </div>
+
+                        <div>
+                            <label>Fotos da Galeria (até 4 URLs):</label>
+                            <input type="text" name="img_1" placeholder="URL Foto 1 (Principal)" class="form-control" style="width: 100%; margin-bottom: 6px;">
+                            <input type="text" name="img_2" placeholder="URL Foto 2" class="form-control" style="width: 100%; margin-bottom: 6px;">
+                            <input type="text" name="img_3" placeholder="URL Foto 3" class="form-control" style="width: 100%; margin-bottom: 6px;">
+                            <input type="text" name="img_4" placeholder="URL Foto 4" class="form-control" style="width: 100%; margin-bottom: 10px;">
+
+                            <label>Descrição:</label>
+                            <textarea name="description" class="form-control" style="width: 100%; height: 80px;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Prévia Matemática Automática -->
+                    <div class="calc-preview">
+                        <strong>Prévia Automática de Preços:</strong><br>
+                        Revenda (+50%): <strong id="preview-revenda" style="color: #2e7d32;">R$ 0,00</strong> | 
+                        Cliente Final (+100%): <strong id="preview-cliente" style="color: #d84315;">R$ 0,00</strong>
+                    </div>
+
+                    <button type="submit" class="btn-primary" style="background: #2e7d32;">Cadastrar Produto</button>
+                </form>
+
+                <h3>Produtos Existentes</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Tipo</th>
+                            <th>Custo Base</th>
+                            <th>Revenda (+50%)</th>
+                            <th>Cliente Final (+100%)</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-products-tbody">
+                        <!-- Renderizado via admin.js -->
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- SEÇÃO 4: USUÁRIOS -->
+            <section id="sec-usuarios" class="admin-section">
+                <h2>Base Completa de Usuários</h2>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Modalidade</th>
+                            <th>Status do Acesso</th>
+                            <th>Ações Administrativas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-users-tbody">
+                        <!-- Renderizado via admin.js -->
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- SEÇÃO 5: CONFIGURAÇÕES -->
+            <section id="sec-config" class="admin-section">
+                <h2>Configurações Globais do E-commerce</h2>
+                <div style="max-width: 500px;">
+                    <div class="form-group">
+                        <label>Margem Padrão de Revenda (%):</label>
+                        <input type="number" id="cfg-reseller-margin" class="form-control" value="50" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Margem Padrão de Cliente Final (%):</label>
+                        <input type="number" id="cfg-retail-margin" class="form-control" value="100" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa de Criação de Arte (R$):</label>
+                        <input type="number" id="cfg-art-fee" class="form-control" value="40" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Área Mínima Cobrada (m²):</label>
+                        <input type="number" id="cfg-min-area" class="form-control" value="0.5" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>WhatsApp para Recebimento de Pedidos:</label>
+                        <input type="text" id="cfg-whatsapp" class="form-control" value="5511999999999">
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../assets/js/supabaseClient.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/admin.js"></script>
+</body>
+</html>
