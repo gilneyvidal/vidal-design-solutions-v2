@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuração de Produto | Vidal Design Solutions</title>
+    
+    <!-- Estilos Base -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/responsive.css">
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        .product-page-container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+        @media (max-width: 768px) {
+            .product-page-container { grid-template-columns: 1fr; }
+        }
+
+        /* Galeria Carrossel 4 Fotos */
+        .gallery-container {
+            position: relative;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .carousel-main-slide {
+            width: 100%;
+            height: 420px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f9f9f9;
+        }
+        .carousel-main-slide img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: opacity 0.4s ease;
+        }
+        .carousel-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .carousel-nav-btn.prev { left: 10px; }
+        .carousel-nav-btn.next { right: 10px; }
+        .carousel-thumbs {
+            display: flex;
+            gap: 10px;
+            padding: 12px;
+            justify-content: center;
+            background: #eee;
+        }
+        .thumb-item {
+            width: 65px;
+            height: 65px;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .thumb-item.active { border-color: #ff9800; }
+        .thumb-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Formulário de Configuração */
+        .config-panel {
+            background: #fff;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .custom-option-field {
+            display: none;
+            margin-top: 8px;
+        }
+        .measurements-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .price-summary-box {
+            background: #fdf7e7;
+            border-left: 4px solid #ff9800;
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .price-summary-box .total-value {
+            font-size: 26px;
+            color: #d84315;
+            font-weight: bold;
+            display: block;
+        }
+        .btn-add-cart {
+            width: 100%;
+            background: #2e7d32;
+            color: #fff;
+            border: none;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-add-cart:hover { background: #1b5e20; }
+    </style>
+</head>
+<body>
+
+    <!-- Cabeçalho -->
+    <header class="main-header">
+        <div class="header-container">
+            <a href="../index.html" class="logo-link">
+                <img src="../logo_cabecalho.png" alt="Vidal Design Solutions" class="site-logo">
+            </a>
+            <nav class="main-nav">
+                <a href="../index.html">← Voltar ao Início</a>
+                <a href="carrinho.html">🛒 Carrinho (<span id="cart-counter">0</span>)</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="product-page-container">
+        <!-- Galeria de 4 Fotos com Carrossel Automático -->
+        <div class="gallery-container">
+            <div class="carousel-main-slide">
+                <img id="main-product-img" src="../logo.png" alt="Foto do Produto">
+            </div>
+            <button class="carousel-nav-btn prev" id="btn-prev-slide">&#10094;</button>
+            <button class="carousel-nav-btn next" id="btn-next-slide">&#10095;</button>
+            
+            <div class="carousel-thumbs" id="carousel-thumbs-container">
+                <!-- Miniaturas das 4 imagens geradas via JavaScript -->
+            </div>
+        </div>
+
+        <!-- Painel de Configuração e Variações Gráficas -->
+        <div class="config-panel">
+            <h1 id="product-name-heading">Carregando produto...</h1>
+            <p id="product-desc-text" class="text-muted"></p>
+
+            <form id="product-config-form">
+                
+                <!-- Dimensões / Medidas (para produtos com cálculo por m²) -->
+                <div id="dimensions-group" class="form-group" style="display: none;">
+                    <label>Dimensões em Centímetros (Mínimo de 0,5 m²):</label>
+                    <div class="measurements-grid">
+                        <div>
+                            <small>Largura (cm):</small>
+                            <input type="number" id="input-width" class="form-control" value="100" min="10" step="1">
+                        </div>
+                        <div>
+                            <small>Altura (cm):</small>
+                            <input type="number" id="input-height" class="form-control" value="100" min="10" step="1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Material / Substrato -->
+                <div class="form-group">
+                    <label for="select-material">Material / Substrato:</label>
+                    <select id="select-material" class="form-control">
+                        <option value="padrao">Padrão da Categoria</option>
+                        <option value="lona_440g">Lona Frontlight 440g</option>
+                        <option value="adesivo_brilho">Vinil Adesivo Brilho</option>
+                        <option value="adesivo_fosco">Vinil Adesivo Fosco</option>
+                        <option value="acm_3mm">Chapa ACM 3mm</option>
+                        <option value="acrilico_cast">Acrílico Cast 2mm/3mm</option>
+                        <option value="pvc_expandido">PVC Expandido</option>
+                        <option value="papel_couche_300g">Papel Couchê 300g</option>
+                        <option value="outro">Personalizável / Outro</option>
+                    </select>
+                    <input type="text" id="custom-material" class="form-control custom-option-field" placeholder="Especifique o material desejado...">
+                </div>
+
+                <!-- Acabamento -->
+                <div class="form-group">
+                    <label for="select-acabamento">Acabamento Gráfico:</label>
+                    <select id="select-acabamento" class="form-control">
+                        <option value="sem_acabamento">Sem Acabamento Extra</option>
+                        <option value="laminacao_fosca">Laminação Fosca</option>
+                        <option value="laminacao_brilho">Laminação Brilho</option>
+                        <option value="ilhos_reforcado">Ilhós com Bainha Reforçada</option>
+                        <option value="corte_laser">Corte Especial a Laser</option>
+                        <option value="outro">Personalizável / Outro</option>
+                    </select>
+                    <input type="text" id="custom-acabamento" class="form-control custom-option-field" placeholder="Especifique o acabamento desejado...">
+                </div>
+
+                <!-- Criação de Arte (+ R$ 40,00) -->
+                <div class="form-group">
+                    <label>Criação ou Ajuste de Arte Profissional:</label>
+                    <select id="select-arte" class="form-control">
+                        <option value="0">Já possuo a arte pronta em PDF/vetor (R$ 0,00)</option>
+                        <option value="40">Preciso que criem/ajustem a arte (+ R$ 40,00)</option>
+                    </select>
+                </div>
+
+                <!-- Quantidade -->
+                <div class="form-group">
+                    <label for="input-quantity">Quantidade:</label>
+                    <input type="number" id="input-quantity" class="form-control" value="1" min="1" max="1000">
+                </div>
+
+                <!-- Resumo de Valores -->
+                <div class="price-summary-box">
+                    <span id="price-status-label">Valor Total Estimado:</span>
+                    <span class="total-value" id="total-price-display">R$ 0,00</span>
+                    <small id="price-disclaimer">*Prazo de produção estimado informado na finalização.</small>
+                </div>
+
+                <button type="submit" class="btn-add-cart" id="btn-add-to-cart">Adicionar ao Carrinho</button>
+            </form>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="../assets/js/supabaseClient.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script>
+        let currentProduct = null;
+        let galleryImages = [];
+        let activeSlideIndex = 0;
+        let carouselTimer = null;
+        let baseUnitPrice = 0;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = urlParams.get('id');
+
+            if (!productId) {
+                alert('Produto não especificado.');
+                window.location.href = '../index.html';
+                return;
+            }
+
+            await loadProductDetails(productId);
+            initEventListeners();
+        });
+
+        async function loadProductDetails(id) {
+            // Buscar catálogo completo e filtrar pelo ID
+            const { data, error } = await window.supabaseClient.rpc('v2_get_catalog');
+            if (error || !data) {
+                alert('Erro ao carregar detalhes do produto.');
+                return;
+            }
+
+            currentProduct = data.find(p => p.id === id);
+            if (!currentProduct) {
+                alert('Produto não encontrado.');
+                window.location.href = '../index.html';
+                return;
+            }
+
+            // Preencher textos
+            document.getElementById('product-name-heading').textContent = currentProduct.name;
+            document.getElementById('product-desc-text').textContent = currentProduct.description || '';
+
+            // Se produto for por m², exibir campos de largura e altura
+            if (currentProduct.calculation_type === 'sqm') {
+                document.getElementById('dimensions-group').style.display = 'block';
+            }
+
+            // Configurar fotos da galeria (até 4 fotos)
+            galleryImages = Array.isArray(currentProduct.images) && currentProduct.images.length > 0 
+                ? currentProduct.images.slice(0, 4) 
+                : ['../logo.png'];
+
+            // Se tiver menos de 4 fotos cadastradas, duplicar ou manter as disponíveis
+            setupCarousel(galleryImages);
+
+            // Preço base liberado pelo banco conforme a sessão do usuário
+            baseUnitPrice = Number(currentProduct.display_price) || 0;
+
+            recalculateTotal();
+        }
+
+        // Configuração do Carrossel de 4 Fotos (Automático a cada 4-5s)
+        function setupCarousel(images) {
+            const thumbsContainer = document.getElementById('carousel-thumbs-container');
+            thumbsContainer.innerHTML = '';
+
+            images.forEach((imgUrl, index) => {
+                const thumb = document.createElement('div');
+                thumb.className = `thumb-item ${index === 0 ? 'active' : ''}`;
+                thumb.innerHTML = `<img src="${imgUrl}" alt="Foto ${index + 1}">`;
+                thumb.addEventListener('click', () => {
+                    goToSlide(index);
+                    resetAutoCarousel();
+                });
+                thumbsContainer.appendChild(thumb);
+            });
+
+            updateSlideUI();
+            startAutoCarousel();
+        }
+
+        function goToSlide(index) {
+            activeSlideIndex = (index + galleryImages.length) % galleryImages.length;
+            updateSlideUI();
+        }
+
+        function updateSlideUI() {
+            document.getElementById('main-product-img').src = galleryImages[activeSlideIndex];
+            const thumbs = document.querySelectorAll('.thumb-item');
+            thumbs.forEach((t, i) => {
+                t.classList.toggle('active', i === activeSlideIndex);
+            });
+        }
+
+        function startAutoCarousel() {
+            carouselTimer = setInterval(() => {
+                goToSlide(activeSlideIndex + 1);
+            }, 4500); // 4.5 segundos
+        }
+
+        function resetAutoCarousel() {
+            clearInterval(carouselTimer);
+            startAutoCarousel();
+        }
+
+        function initEventListeners() {
+            document.getElementById('btn-prev-slide').addEventListener('click', () => {
+                goToSlide(activeSlideIndex - 1);
+                resetAutoCarousel();
+            });
+
+            document.getElementById('btn-next-slide').addEventListener('click', () => {
+                goToSlide(activeSlideIndex + 1);
+                resetAutoCarousel();
+            });
+
+            // Válvula de Escape: Exibir campo de texto se escolher "Personalizável / Outro"
+            document.getElementById('select-material').addEventListener('change', (e) => {
+                const customField = document.getElementById('custom-material');
+                customField.style.display = e.target.value === 'outro' ? 'block' : 'none';
+            });
+
+            document.getElementById('select-acabamento').addEventListener('change', (e) => {
+                const customField = document.getElementById('custom-acabamento');
+                customField.style.display = e.target.value === 'outro' ? 'block' : 'none';
+            });
+
+            // Recálculo ao alterar qualquer valor
+            ['input-width', 'input-height', 'select-arte', 'input-quantity'].forEach(id => {
+                document.getElementById(id)?.addEventListener('input', recalculateTotal);
+            });
+
+            // Submeter ao carrinho
+            document.getElementById('product-config-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                addToCart();
+            });
+        }
+
+        // Recálculo do total em tempo real com regra de 0,5 m² mínimo e taxa de arte
+        function recalculateTotal() {
+            const displayEl = document.getElementById('total-price-display');
+
+            if (baseUnitPrice <= 0) {
+                displayEl.textContent = '🔒 Preço Oculto (Faça Login)';
+                return;
+            }
+
+            const qty = Math.max(1, parseInt(document.getElementById('input-quantity').value) || 1);
+            const artFee = parseFloat(document.getElementById('select-arte').value) || 0;
+
+            let unitCost = baseUnitPrice;
+
+            // Se for cobrança por m²
+            if (currentProduct.calculation_type === 'sqm') {
+                const width = Math.max(10, parseFloat(document.getElementById('input-width').value) || 100) / 100;
+                const height = Math.max(10, parseFloat(document.getElementById('input-height').value) || 100) / 100;
+                let area = width * height;
+                if (area < 0.5) area = 0.5; // Trava mínima de 0,5 m² definida na reunião
+                unitCost = baseUnitPrice * area;
+            }
+
+            const total = (unitCost * qty) + artFee;
+            displayEl.textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // Salvar item configurado no Carrinho (localStorage)
+        function addToCart() {
+            const materialSelect = document.getElementById('select-material');
+            const materialValue = materialSelect.value === 'outro' 
+                ? document.getElementById('custom-material').value || 'Personalizado' 
+                : materialSelect.options[materialSelect.selectedIndex].text;
+
+            const acabamentoSelect = document.getElementById('select-acabamento');
+            const acabamentoValue = acabamentoSelect.value === 'outro' 
+                ? document.getElementById('custom-acabamento').value || 'Personalizado' 
+                : acabamentoSelect.options[acabamentoSelect.selectedIndex].text;
+
+            const artFee = parseFloat(document.getElementById('select-arte').value) || 0;
+            const qty = parseInt(document.getElementById('input-quantity').value) || 1;
+
+            const cartItem = {
+                productId: currentProduct.id,
+                name: currentProduct.name,
+                image: galleryImages[0],
+                unitPrice: baseUnitPrice,
+                quantity: qty,
+                material: materialValue,
+                acabamento: acabamentoValue,
+                hasArt: artFee > 0,
+                artFee: artFee,
+                width: currentProduct.calculation_type === 'sqm' ? document.getElementById('input-width').value : null,
+                height: currentProduct.calculation_type === 'sqm' ? document.getElementById('input-height').value : null
+            };
+
+            const existingCart = JSON.parse(localStorage.getItem('vdl_cart_v2') || '[]');
+            existingCart.push(cartItem);
+            localStorage.setItem('vdl_cart_v2', JSON.stringify(existingCart));
+
+            alert('Produto adicionado ao seu carrinho!');
+            window.location.href = 'carrinho.html';
+        }
+    </script>
+</body>
+</html>
