@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/products.js
-// OBJETIVO: Catálogo Dinâmico com Fallback Resiliente e Proteção de Preços
+// OBJETIVO: Catálogo Conectado com Leitura Pública e Proteção de Preços
 // ==============================================================================
 
 let productsData = [];
@@ -47,6 +47,7 @@ async function loadProductsFromSupabase() {
             return;
         }
 
+        // 1. Identifica o papel do usuário para precificação
         let userRole = 'guest';
         if (window.AuthController) {
             const user = await window.AuthController.getCurrentUser();
@@ -57,46 +58,17 @@ async function loadProductsFromSupabase() {
             }
         }
 
-        let rawProducts = null;
+        // 2. Busca os produtos diretamente na tabela v2_products
+        const { data: tableData, error: tableErr } = await window.supabaseClient
+            .from('v2_products')
+            .select('*')
+            .eq('is_active', true)
+            .order('name');
 
-        // 1. Tenta buscar via RPC
-        try {
-            const { data, error } = await window.supabaseClient.rpc('v2_get_catalog');
-            if (!error && data && data.length > 0) {
-                rawProducts = data;
-            }
-        } catch (e) {}
+        if (tableErr) throw tableErr;
 
-        // 2. Se a RPC falhar ou não trouxer dados, busca direto de v2_products
-        if (!rawProducts) {
-            const { data: tableData, error: tableErr } = await window.supabaseClient
-                .from('v2_products')
-                .select('*')
-                .eq('is_active', true)
-                .order('name');
-
-            if (tableErr) throw tableErr;
-
-            rawProducts = (tableData || []).map(p => {
-                const cost = Number(p.base_cost) || 0;
-                let finalDisplayPrice = null;
-                if (userRole === 'revenda') finalDisplayPrice = cost * 1.5;
-                else if (userRole === 'cliente_final' || userRole === 'master') finalDisplayPrice = cost * 2.0;
-
-                return {
-                    id: p.id,
-                    name: p.name,
-                    description: p.description,
-                    calculation_type: p.calculation_type,
-                    production_days: p.production_days,
-                    images: p.images,
-                    display_price: finalDisplayPrice
-                };
-            });
-        }
-
-        if (rawProducts && rawProducts.length > 0) {
-            productsData = rawProducts.map(p => {
+        if (tableData && tableData.length > 0) {
+            productsData = tableData.map(p => {
                 let cat = 'geral';
                 const nameLow = p.name.toLowerCase();
                 if (nameLow.includes('adesivo') || nameLow.includes('dtf')) cat = 'adesivos';
@@ -108,6 +80,12 @@ async function loadProductsFromSupabase() {
                 else if (nameLow.includes('social') || nameLow.includes('arte')) cat = 'social-midia';
 
                 const imagesArr = Array.isArray(p.images) && p.images.length > 0 ? p.images : ['assets/images/produtos/adesivo-branco.jpg'];
+                const cost = Number(p.base_cost) || 0;
+
+                // Regra Comercial da Ata 01:
+                let finalPrice = null;
+                if (userRole === 'revenda') finalPrice = cost * 1.5; // Custo + 50%
+                else if (userRole === 'cliente_final' || userRole === 'master') finalPrice = cost * 2.0; // Custo + 100%
 
                 return {
                     id: p.id,
@@ -115,7 +93,7 @@ async function loadProductsFromSupabase() {
                     category: cat,
                     description: p.description || 'Comunicação visual de alta resolução.',
                     calcType: p.calculation_type === 'sqm' ? 'area' : (p.calculation_type === 'linear_meter' ? 'linear' : 'unit'),
-                    basePrice: p.display_price !== null ? Number(p.display_price) : null,
+                    basePrice: finalPrice,
                     productionDays: p.production_days || 2,
                     image: imagesArr[0],
                     options: [
@@ -136,12 +114,12 @@ async function loadProductsFromSupabase() {
 
             renderProducts(productsData);
         } else {
-            productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">Nenhum produto disponível no momento.</div>';
+            productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">Nenhum produto cadastrado no momento.</div>';
         }
 
     } catch (err) {
         console.error('Erro ao carregar catálogo:', err);
-        productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">Erro de conexão com o catálogo. Recarregue a página.</div>';
+        productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">Erro ao carregar catálogo. Verifique sua conexão e recarregue.</div>';
     }
 }
 
@@ -159,14 +137,14 @@ function renderProducts(productsToRender) {
     productsToRender.forEach((product, index) => {
         const card = document.createElement('div');
         card.className = 'product-card animate-in';
-        card.style.animationDelay = `${index * 0.05}s`;
+        card.style.animationDelay = `${index * 0.04}s`;
         
         let displayPriceHTML = '';
         if (product.basePrice === null) {
             displayPriceHTML = `
                 <div class="product-price">
                     <span class="price-label">Preço Comercial</span>
-                    <span class="price-value" style="font-size: 1rem; color: #6b7280;"><i class="fas fa-lock"></i> Sob consulta</span>
+                    <span class="price-value" style="font-size: 1rem; color: #64748b;"><i class="fas fa-lock"></i> Sob consulta</span>
                 </div>
             `;
         } else {
@@ -272,16 +250,21 @@ function openModal(productId) {
 
     const isLocked = currentProduct.basePrice === null;
     const footerHTML = isLocked ? `
-        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 1rem; border-radius: var(--radius-md); text-align: center; margin-top: 1.5rem;">
-            <p style="color: #b91c1c; font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem;">
-                <i class="fas fa-lock"></i> Preços protegidos para visitantes
+        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 1.25rem; border-radius: var(--radius-md); text-align: center; margin-top: 1.5rem;">
+            <p style="color: #b91c1c; font-weight: 700; font-size: 1rem; margin-bottom: 0.5rem;">
+                <i class="fas fa-lock"></i> Preços Protegidos para Visitantes
             </p>
-            <p style="color: #6b7280; font-size: 0.85rem; margin-bottom: 1rem;">
-                Faça login ou cadastre-se no topo da página para liberar orçamentos e pedidos.
+            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">
+                Faça login ou cadastre-se para liberar sua tabela comercial e montar orçamentos.
             </p>
-            <button class="btn btn-primary" onclick="closeModal(); window.AuthController.loginWithGoogle();">
-                <i class="fab fa-google"></i> Entrar com Google
-            </button>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn btn-primary" onclick="closeModal(); window.AuthController.loginWithGoogle();">
+                    <i class="fab fa-google"></i> Entrar com Google
+                </button>
+                <button class="btn btn-secondary" onclick="closeModal(); openRegisterModal();" style="background:#f97316; color:#fff; border:none;">
+                    Cadastre-se
+                </button>
+            </div>
         </div>
     ` : `
         <div class="modal-footer">
