@@ -1,11 +1,14 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/supabaseClient.js
-// OBJETIVO: Conexão Oficial com Supabase e Controle de Autenticação
+// OBJETIVO: Conexão Oficial com Supabase e Redirecionamento Correto para GitHub Pages
 // ==============================================================================
 
 const SUPABASE_URL = 'https://ibaavtapoqbvcbbqynxs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliYWF2dGFwb3FidmNiYnF5bnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzE3NjUsImV4cCI6MjEwMzM0Nzc2NX0.PhXhDc8bd5c2msSa_mQuLsTDfn5MY5cjNbjJS-7EHc0';
+
+// URL Oficial de Retorno após o Login
+const OFFICIAL_REDIRECT_URL = 'https://gilneyvidal.github.io/vidal-design-solutions-v2/';
 
 let supabaseClient = null;
 
@@ -21,7 +24,7 @@ try {
 }
 
 const AuthController = {
-    // Inicia login social com Google
+    // Inicia login social com Google apontando para o GitHub Pages
     async loginWithGoogle() {
         if (!supabaseClient) {
             alert('Atenção: O cliente Supabase não está inicializado.');
@@ -29,11 +32,11 @@ const AuthController = {
         }
 
         try {
-            console.log('Iniciando redirecionamento para o Google...');
+            console.log('Redirecionando para login com Google...');
             const { data, error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin + window.location.pathname
+                    redirectTo: OFFICIAL_REDIRECT_URL
                 }
             });
 
@@ -49,7 +52,7 @@ const AuthController = {
         if (!supabaseClient) return;
         try {
             await supabaseClient.auth.signOut();
-            window.location.reload();
+            window.location.href = OFFICIAL_REDIRECT_URL;
         } catch (err) {
             console.error('Erro ao encerrar sessão:', err);
         }
