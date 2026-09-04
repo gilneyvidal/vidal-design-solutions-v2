@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/cart.js
-// OBJETIVO: Gerenciamento do Carrinho, ID Único #VDL, Checkout Duplo e PDF
+// OBJETIVO: Gerenciamento do Carrinho, Gravação de Itens no Supabase e PDF com Logo
 // ==============================================================================
 
 const CART_STORAGE_KEY = 'vidalCart';
@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initCartEvents();
 });
 
-// Carrega itens do localStorage
 function loadCartFromStorage() {
     try {
         currentCart = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
@@ -28,14 +27,12 @@ function loadCartFromStorage() {
     updateCartCount();
 }
 
-// Salva alterações no localStorage
 function saveCartToStorage() {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(currentCart));
     updateCartCount();
     renderCartPageUI();
 }
 
-// Atualiza o contador de itens no cabeçalho
 function updateCartCount() {
     const counterElements = document.querySelectorAll('#cartCount, #cartItemCount');
     const totalItems = currentCart.reduce((sum, item) => sum + item.quantity, 0);
@@ -44,7 +41,6 @@ function updateCartCount() {
     });
 }
 
-// Adiciona item ao carrinho (chamado pelo products.js)
 window.addToCart = function(product) {
     const existingIndex = currentCart.findIndex(item => item.id === product.id);
     if (existingIndex > -1) {
@@ -60,7 +56,6 @@ window.addToCart = function(product) {
     alert(`"${product.name.split('|')[0].trim()}" foi adicionado ao seu orçamento!`);
 };
 
-// Verifica sessão do usuário logado
 async function checkUserSession() {
     if (window.AuthController) {
         currentUser = await window.AuthController.getCurrentUser();
@@ -70,7 +65,6 @@ async function checkUserSession() {
     }
 }
 
-// Busca configurações globais do Supabase (WhatsApp, etc.)
 async function loadGlobalSettings() {
     if (!window.supabaseClient) return;
     try {
@@ -81,11 +75,10 @@ async function loadGlobalSettings() {
             .single();
         globalSettings = data;
     } catch (e) {
-        console.warn('Configurações globais não carregadas, usando padrão.');
+        console.warn('Configurações globais não carregadas.');
     }
 }
 
-// Renderiza a lista de produtos na página do carrinho
 function renderCartPageUI() {
     const container = document.getElementById('cart-items-container');
     const emptyNotice = document.getElementById('cart-empty-notice');
@@ -168,7 +161,6 @@ window.removeCartItem = function(index) {
 };
 
 function initCartEvents() {
-    // Alternar formulário de entrega
     document.querySelectorAll('input[name="delivery_option"]').forEach(r => {
         r.addEventListener('change', (e) => {
             const form = document.getElementById('delivery-address-form');
@@ -176,25 +168,22 @@ function initCartEvents() {
         });
     });
 
-    // Checkout Mercado Pago
     document.getElementById('btn-checkout-mercadopago')?.addEventListener('click', () => {
         processOrderSubmission('mercado_pago');
     });
 
-    // Checkout WhatsApp
     document.getElementById('btn-checkout-whatsapp')?.addEventListener('click', () => {
         processOrderSubmission('whatsapp');
     });
 }
 
-// Grava o Pedido no Supabase e Emite o PDF
+// Grava o pedido com todos os itens na tabela v2_order_items
 async function processOrderSubmission(paymentMethod) {
     if (!currentCart.length) {
         alert('Seu carrinho está vazio.');
         return;
     }
 
-    // Trava de Identificação
     if (!currentUser || !currentProfile) {
         alert('Por favor, faça login com o Google para vincular e emitir seu pedido oficial.');
         window.AuthController?.loginWithGoogle();
@@ -226,7 +215,7 @@ async function processOrderSubmission(paymentMethod) {
     const total = subtotal + artFee;
 
     try {
-        // 1. Grava o pedido com o ID Único gerado pelo Supabase
+        // 1. Inserir Pedido Master
         const { data: orderData, error: orderErr } = await window.supabaseClient
             .from('v2_orders')
             .insert({
@@ -245,7 +234,7 @@ async function processOrderSubmission(paymentMethod) {
 
         if (orderErr) throw orderErr;
 
-        // 2. Grava os itens na v2_order_items
+        // 2. Inserir Itens na tabela v2_order_items
         const itemsPayload = currentCart.map(it => ({
             order_id: orderData.id,
             product_name: it.name,
@@ -254,15 +243,14 @@ async function processOrderSubmission(paymentMethod) {
             item_total: it.basePrice * it.quantity
         }));
 
-        await window.supabaseClient.from('v2_order_items').insert(itemsPayload);
+        const { error: itemsErr } = await window.supabaseClient.from('v2_order_items').insert(itemsPayload);
+        if (itemsErr) console.warn('Aviso itens:', itemsErr);
 
-        // Limpa o carrinho
         const savedItems = [...currentCart];
         localStorage.removeItem(CART_STORAGE_KEY);
         currentCart = [];
         updateCartCount();
 
-        // 3. Executa a Ação
         if (paymentMethod === 'whatsapp') {
             sendWhatsAppWithOrder(orderData, savedItems);
         } else {
@@ -275,7 +263,6 @@ async function processOrderSubmission(paymentMethod) {
     }
 }
 
-// Disparo para o WhatsApp com ID Único e dados para IA
 function sendWhatsAppWithOrder(order, items) {
     const phone = globalSettings?.whatsapp_number || '5511968649673';
     const clientName = currentProfile?.full_name || 'Cliente';
@@ -303,20 +290,19 @@ function sendWhatsAppWithOrder(order, items) {
     showOrderFinishedModal(order, items, 'WhatsApp');
 }
 
-// Modal de Conclusão com Download de PDF
 function showOrderFinishedModal(order, items, canal) {
     let modal = document.getElementById('modal-order-done');
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'modal-order-done';
-        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:9999;';
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.85); display:flex; align-items:center; justify-content:center; z-index:9999;';
         document.body.appendChild(modal);
     }
 
     modal.innerHTML = `
         <div style="background:#fff; padding:35px; border-radius:16px; max-width:550px; width:90%; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.3);">
             <i class="fas fa-check-circle" style="font-size: 55px; color: #16a34a; margin-bottom: 15px;"></i>
-            <h2 style="font-family:Montserrat, sans-serif; font-size: 24px; color: #1e293b; margin-bottom: 8px;">Pedido Registrado com Sucesso!</h2>
+            <h2 style="font-family:Montserrat, sans-serif; font-size: 24px; color: #0f172a; margin-bottom: 8px;">Pedido Registrado com Sucesso!</h2>
             <div style="background: #f1f5f9; padding: 10px 20px; border-radius: 8px; font-weight: 800; font-size: 20px; color: #ea580c; display: inline-block; margin: 10px 0 20px;">
                 ${order.order_code}
             </div>
@@ -339,35 +325,44 @@ function showOrderFinishedModal(order, items, canal) {
     });
 }
 
-// Emissão de PDF Oficial com Identidade Visual Vidal Design Solutions
+// Emissão de PDF com Logotipo Oficial e Tabela de Itens
 function downloadOrderPDF(order, items) {
     const clientName = currentProfile?.full_name || 'Cliente';
     const clientEmail = currentProfile?.email || '';
 
     const element = document.createElement('div');
-    element.style.padding = '30px';
+    element.style.padding = '35px';
     element.style.fontFamily = 'Arial, sans-serif';
     element.style.color = '#1e293b';
 
+    const safeItems = items && items.length > 0 ? items : [
+        { name: 'Item do Pedido', quantity: 1, basePrice: order.subtotal || order.total }
+    ];
+
     let itemsRows = '';
-    items.forEach((it, idx) => {
+    safeItems.forEach((it, idx) => {
+        const uPrice = Number(it.basePrice || it.unit_price) || 0;
+        const q = Number(it.quantity) || 1;
         itemsRows += `
             <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 10px;">${idx + 1}</td>
-                <td style="padding: 10px;"><strong>${it.name}</strong></td>
-                <td style="padding: 10px; text-align: center;">${it.quantity}</td>
-                <td style="padding: 10px; text-align: right;">${Number(it.basePrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td style="padding: 10px; text-align: right;"><strong>${(it.basePrice * it.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
+                <td style="padding: 10px;"><strong>${it.name || it.product_name}</strong></td>
+                <td style="padding: 10px; text-align: center;">${q}</td>
+                <td style="padding: 10px; text-align: right;">${uPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td style="padding: 10px; text-align: right;"><strong>${(uPrice * q).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
             </tr>
         `;
     });
 
     element.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f97316; padding-bottom: 15px; margin-bottom: 25px;">
-            <div>
-                <h1 style="margin: 0; color: #1e3a8a; font-size: 22px;">VIDAL DESIGN SOLUTIONS</h1>
-                <p style="margin: 3px 0 0 0; color: #64748b; font-size: 12px;">Comunicação Visual, Sinalização, Toldos e Impressão Digital</p>
-                <p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">Mogi das Cruzes - SP | (11) 96864-9673</p>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <img src="../logo_cabecalho.png" style="height: 48px; max-width: 180px; object-fit: contain;" onerror="this.src='../logo.png'">
+                <div>
+                    <h1 style="margin: 0; color: #1e3a8a; font-size: 20px;">VIDAL DESIGN SOLUTIONS</h1>
+                    <p style="margin: 3px 0 0 0; color: #64748b; font-size: 12px;">Comunicação Visual, Sinalização, Toldos e Impressão Digital</p>
+                    <p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">Mogi das Cruzes - SP | Tel / WhatsApp: (11) 96864-9673</p>
+                </div>
             </div>
             <div style="text-align: right;">
                 <div style="font-size: 14px; font-weight: bold; color: #ea580c;">ORÇAMENTO / PEDIDO</div>
@@ -384,7 +379,7 @@ function downloadOrderPDF(order, items) {
             </div>
             <div>
                 <strong>Recebimento:</strong> ${order.delivery_type.toUpperCase()}<br>
-                <strong>Canal:</strong> ${order.payment_method.toUpperCase()}<br>
+                <strong>Canal:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
                 <strong>Status Inicial:</strong> ${order.status.toUpperCase()}
             </div>
         </div>
@@ -408,11 +403,11 @@ function downloadOrderPDF(order, items) {
             <div style="width: 260px; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; font-size: 13px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                     <span>Subtotal:</span>
-                    <strong>${Number(order.subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                    <strong>${Number(order.subtotal || order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                     <span>Taxa de Arte:</span>
-                    <strong>${Number(order.art_fee).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                    <strong>${Number(order.art_fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #c2410c; border-top: 1px solid #fed7aa; padding-top: 6px;">
                     <span>VALOR TOTAL:</span>
@@ -422,7 +417,7 @@ function downloadOrderPDF(order, items) {
         </div>
 
         <div style="margin-top: 35px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 11px; color: #94a3b8; text-align: center;">
-            Documento emitido automaticamente pelo Portal V2 da Vidal Design Solutions.
+            Documento emitido pelo Portal V2 da Vidal Design Solutions.
         </div>
     `;
 
