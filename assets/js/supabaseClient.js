@@ -6,8 +6,8 @@
 
 // 1. Configurações Públicas do Projeto Supabase
 // (Obtenha em: Supabase Dashboard > Project Settings > API)
-const SUPABASE_URL = 'https://SEU_PROJETO.supabase.co';
-const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_PUBLICA_AQUI';
+const SUPABASE_URL = https://ibaavtapoqbvcbbqynxs.supabase.co/rest/v1/;
+const SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliYWF2dGFwb3FidmNiYnF5bnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzE3NjUsImV4cCI6MjEwMzM0Nzc2NX0.PhXhDc8bd5c2msSa_mQuLsTDfn5MY5cjNbjJS-7EHc0;
 
 // 2. Inicialização do Cliente Supabase via biblioteca CDN
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
