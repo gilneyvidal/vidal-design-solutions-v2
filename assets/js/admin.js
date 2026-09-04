@@ -78,7 +78,7 @@ function renderOrdersTable(orders) {
     const tbody = document.getElementById('admin-orders-tbody');
     if (!tbody) return;
     if (!orders.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">Nenhum pedido registrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">Nenhum pedido registrado ainda.</td></tr>';
         return;
     }
     tbody.innerHTML = '';
