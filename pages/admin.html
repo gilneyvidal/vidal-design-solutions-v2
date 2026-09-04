@@ -7,7 +7,10 @@
     
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/responsive.css">
+    
+    <!-- Supabase CDN e HTML2PDF para Emissão de PDF no Painel -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         body { background: #f4f6f9; color: #1e293b; margin: 0; font-family: 'Segoe UI', Arial, sans-serif; }
@@ -38,9 +41,8 @@
         .status-select { padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 13px; }
         .btn-approve { background: #16a34a; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-reject { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-edit { background: #0284c7; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-edit { background: #0284c7; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
         
-        /* Motor de Variáveis do Mercado Gráfico */
         .variables-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -66,6 +68,29 @@
             margin-bottom: 6px;
             cursor: pointer;
             color: #334155;
+        }
+
+        /* Modal Ficha Completa do Pedido */
+        .modal-inspect-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        .modal-inspect-box {
+            background: #ffffff;
+            border-radius: 12px;
+            max-width: 750px;
+            width: 92%;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            color: #1e293b;
+            max-height: 90vh;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -135,7 +160,7 @@
                 </table>
             </section>
 
-            <!-- SEÇÃO 3: CATÁLOGO & VARIÁVEIS DO MERCADO GRÁFICO -->
+            <!-- SEÇÃO 3: CATÁLOGO & VARIÁVEIS -->
             <section id="sec-produtos" class="admin-section">
                 <h2>Cadastro & Gestão Completa de Produtos</h2>
                 <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
@@ -182,7 +207,7 @@
                         </div>
                     </div>
 
-                    <!-- Todas as Variáveis Gráficas do ChatGPT Mapeadas -->
+                    <!-- Todas as Variáveis Gráficas -->
                     <h4 style="margin: 20px 0 10px; color: #0f172a; font-size: 14px;">⚙️ Atributos Gráficos Ativos deste Produto:</h4>
                     <div class="variables-grid">
                         <div>
@@ -285,6 +310,13 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Modal Ficha Completa do Pedido -->
+    <div id="modal-order-inspect" class="modal-inspect-overlay">
+        <div class="modal-inspect-box" id="modal-order-inspect-body">
+            <!-- Renderizado dinamicamente pelo admin.js ao clicar em Ver -->
+        </div>
     </div>
 
     <script src="../assets/js/supabaseClient.js"></script>
