@@ -3,407 +3,292 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Vidal Design Solutions - Materiais Gráficos, Sinalização, Toldos e Fachadas. Qualidade e agilidade para seu negócio.">
-    <meta name="keywords" content="gráfica, adesivos, banners, sinalização, toldos, fachadas, São Paulo, Mogi das Cruzes">
-    <meta name="author" content="Vidal Design Solutions">
+    <title>Painel Master | Vidal Design Solutions</title>
     
-    <meta property="og:title" content="Vidal Design Solutions - Soluções em Comunicação Visual">
-    <meta property="og:description" content="Materiais gráficos de qualidade com entrega rápida para todo o Brasil.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://vidaldesignsolutions.com.br">
-    <meta property="og:image" content="https://vidaldesignsolutions.com.br/logo.png">
-    
-    <title>Vidal Design Solutions | Comunicação Visual</title>
-    
-    <!-- Tipografia Original -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <!-- Ícones FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <link rel="icon" type="image/png" href="logo.png">
-    
-    <!-- Estilos Originais -->
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/responsive.css">
-
-    <!-- Supabase JS Client Oficial -->
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/responsive.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+
     <style>
-        .logo-header { display: flex; align-items: center; height: 60px; }
-        .logo-header img { height: 100%; width: auto; max-width: 220px; object-fit: contain; }
-        .logo-footer { display: flex; align-items: center; height: 50px; margin-bottom: 1rem; }
-        .logo-footer img { height: 100%; width: auto; max-width: 180px; object-fit: contain; }
-        .category-card { cursor: pointer; }
-
-        /* Barra Superior de Autenticação V2 */
-        .top-auth-bar {
-            background: #0f172a;
-            color: #e2e8f0;
-            padding: 8px 0;
-            font-size: 13px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            z-index: 1001;
-        }
-        .top-auth-inner {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .auth-status-pill {
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 700;
-        }
-        .badge-guest { background: #334155; color: #cbd5e1; }
-        .badge-pending { background: #ea580c; color: #fff; }
-        .badge-cliente { background: #2563eb; color: #fff; }
-        .badge-revenda { background: #16a34a; color: #fff; }
-        .badge-master { background: #9333ea; color: #fff; }
-        .badge-blocked { background: #dc2626; color: #fff; }
-
-        .auth-buttons-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-google-login {
-            display: inline-flex;
-            align-items: center;
-            background: #ffffff;
-            color: #1e293b;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-        .btn-google-login:hover {
-            background: #f1f5f9;
-            transform: translateY(-1px);
-        }
-        .btn-signup-direct {
-            background: #f97316;
-            color: #fff;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-signup-direct:hover {
-            background: #ea580c;
-        }
-        .btn-admin-pill {
-            background: #9333ea;
-            color: #fff !important;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 700;
-            text-decoration: none;
-        }
-        .btn-logout-pill {
-            background: transparent;
-            color: #94a3b8;
-            border: 1px solid #475569;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            cursor: pointer;
-        }
-
-        /* Modal de Cadastro & Triagem */
-        .modal-register-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(4px);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-        }
-        .modal-register-box {
-            background: #ffffff;
-            border-radius: 12px;
-            max-width: 520px;
-            width: 92%;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-            color: #1e293b;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .form-register-group {
-            margin-bottom: 15px;
-        }
-        .form-register-group label {
-            display: block;
-            font-weight: 700;
-            font-size: 13px;
-            margin-bottom: 5px;
-            color: #334155;
-        }
-        .form-register-control {
-            width: 100%;
-            padding: 9px 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        .role-choice-card {
-            border: 2px solid #e2e8f0;
+        body { background: #f4f6f9; color: #1e293b; margin: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        .admin-layout { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+        @media (max-width: 900px) { .admin-layout { grid-template-columns: 1fr; } }
+        
+        .admin-sidebar { background: #0f172a; color: #fff; padding: 25px 0; }
+        .admin-sidebar-header { padding: 0 25px 25px; border-bottom: 1px solid #1e293b; }
+        .admin-sidebar-header h2 { margin: 0; font-size: 20px; color: #f97316; font-weight: 800; }
+        .admin-nav { list-style: none; padding: 0; margin: 25px 0; }
+        .admin-nav-item { display: block; padding: 14px 25px; color: #94a3b8; text-decoration: none; cursor: pointer; transition: all 0.2s; font-weight: 600; font-size: 14px; }
+        .admin-nav-item:hover, .admin-nav-item.active { background: #f97316; color: #ffffff; }
+        
+        .admin-main { padding: 35px; }
+        .admin-header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .admin-section { display: none; background: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .admin-section.active { display: block; }
+        
+        .admin-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        .admin-table th { background: #0f172a; color: #fff; text-align: left; padding: 12px; }
+        .admin-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+        
+        .role-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .role-badge.revenda { background: #e8f5e9; color: #2e7d32; }
+        .role-badge.cliente_final { background: #e3f2fd; color: #1565c0; }
+        .role-badge.master { background: #f3e5f5; color: #7b1fa2; }
+        
+        .status-select { padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 13px; }
+        .btn-approve { background: #16a34a; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-reject { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-edit { background: #0284c7; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        
+        /* Motor de Variáveis do Mercado Gráfico */
+        .variables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
             border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
+            margin: 15px 0;
         }
-        .role-choice-card.selected {
-            border-color: #f97316;
-            background: #fff7ed;
+        .var-group-title {
+            font-weight: 800;
+            font-size: 13px;
+            color: #0f172a;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #f97316;
+            padding-bottom: 4px;
+        }
+        .var-checkbox-label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            color: #334155;
         }
     </style>
 </head>
 <body>
 
-    <!-- Barra Superior de Autenticação V2 -->
-    <div class="top-auth-bar">
-        <div class="container top-auth-inner">
-            <span><i class="fas fa-shield-alt" style="color: var(--secondary);"></i> Vidal Design Solutions • Portal V2</span>
-            <div id="auth-user-container">
-                <div class="auth-buttons-group">
-                    <span class="auth-status-pill badge-guest">🔒 Preços Ocultos</span>
-                    <button id="btn-login-google" class="btn-google-login" onclick="window.AuthController.loginWithGoogle()">
-                        <i class="fab fa-google" style="color: #ea4335; margin-right: 6px;"></i> Entrar
-                    </button>
-                    <button id="btn-open-register" class="btn-signup-direct" onclick="openRegisterModal()">
-                        <i class="fas fa-user-plus"></i> Cadastre-se
-                    </button>
-                </div>
+    <div class="admin-layout">
+        <aside class="admin-sidebar">
+            <div class="admin-sidebar-header">
+                <h2>VIDAL MASTER</h2>
+                <small style="color: #94a3b8;">Gestão Central V2</small>
             </div>
-        </div>
+            <ul class="admin-nav">
+                <li><a class="admin-nav-item active" data-target="sec-pedidos">📦 Pedidos & Operação</a></li>
+                <li><a class="admin-nav-item" data-target="sec-revendas">⭐ Triagem de Revendas</a></li>
+                <li><a class="admin-nav-item" data-target="sec-produtos">🎨 Catálogo & Variáveis</a></li>
+                <li><a class="admin-nav-item" data-target="sec-usuarios">👥 Todos os Usuários</a></li>
+                <li><a class="admin-nav-item" data-target="sec-config">⚙️ Regras Globais</a></li>
+                <li><a href="../index.html" class="admin-nav-item">🌐 Ver Loja Pública</a></li>
+            </ul>
+        </aside>
+
+        <main class="admin-main">
+            <div class="admin-header-bar">
+                <h1>Painel Master de Administração</h1>
+                <span>Administrador Master: <strong id="admin-user-name">Gilney Vidal</strong></span>
+            </div>
+
+            <!-- SEÇÃO 1: PEDIDOS -->
+            <section id="sec-pedidos" class="admin-section active">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>Gerenciamento de Pedidos</h2>
+                    <input type="text" id="admin-order-search" placeholder="Buscar por #VDL, cliente ou status..." style="padding: 10px; width: 320px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                </div>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID do Pedido</th>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th>Modalidade</th>
+                            <th>Total</th>
+                            <th>Status da Produção</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-orders-tbody"></tbody>
+                </table>
+            </section>
+
+            <!-- SEÇÃO 2: TRIAGEM DE REVENDA -->
+            <section id="sec-revendas" class="admin-section">
+                <h2>Solicitações de Revenda (Triagem Manual)</h2>
+                <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
+                    Aprove ou reprove. Conforme a LGPD, o comprovante é <strong>descartado imediatamente</strong> após a decisão.
+                </p>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nome do Solicitante</th>
+                            <th>E-mail</th>
+                            <th>Telefone</th>
+                            <th>Observações / Comprovante</th>
+                            <th>Decisão do Administrador</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-resellers-tbody"></tbody>
+                </table>
+            </section>
+
+            <!-- SEÇÃO 3: CATÁLOGO & VARIÁVEIS DO MERCADO GRÁFICO -->
+            <section id="sec-produtos" class="admin-section">
+                <h2>Cadastro & Gestão Completa de Produtos</h2>
+                <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
+                    Cadastre o <strong>Preço de Custo</strong> e ative as variáveis gráficas específicas da peça.
+                </p>
+
+                <form id="form-new-product" style="background: #ffffff; border: 1px solid #e2e8f0; padding: 25px; border-radius: 10px; margin-bottom: 35px;">
+                    <input type="hidden" id="edit-prod-id" name="prod_id" value="">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 id="form-product-title" style="margin: 0; color: #0f172a;">Novo Produto</h3>
+                        <button type="button" id="btn-cancel-edit" style="display: none; background: #94a3b8; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Cancelar Edição</button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <label style="font-weight: 700; font-size: 13px;">Nome do Produto:</label>
+                            <input type="text" id="new-prod-name" name="name" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin: 6px 0 15px;">
+
+                            <label style="font-weight: 700; font-size: 13px;">Preço de Custo Base (R$):</label>
+                            <input type="number" step="0.01" id="new-prod-cost" name="base_cost" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin: 6px 0 15px;">
+
+                            <label style="font-weight: 700; font-size: 13px;">Tipo de Cobrança:</label>
+                            <select id="new-prod-calctype" name="calculation_type" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin: 6px 0 15px;">
+                                <option value="sqm">Por Metro Quadrado (m²)</option>
+                                <option value="unit">Por Unidade / Peça</option>
+                                <option value="linear_meter">Por Metro Linear (Toldos)</option>
+                                <option value="pack">Por Pacote / Lote</option>
+                            </select>
+
+                            <label style="font-weight: 700; font-size: 13px;">Prazo de Produção do Fornecedor (dias úteis):</label>
+                            <input type="number" id="new-prod-days" name="production_days" value="2" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin: 6px 0 15px;">
+                        </div>
+
+                        <div>
+                            <label style="font-weight: 700; font-size: 13px;">Fotos da Galeria (Caminhos/URLs):</label>
+                            <input type="text" id="new-prod-img1" name="img_1" placeholder="Foto 1 (Principal)" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 6px;">
+                            <input type="text" id="new-prod-img2" name="img_2" placeholder="Foto 2" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 6px;">
+                            <input type="text" id="new-prod-img3" name="img_3" placeholder="Foto 3" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 6px;">
+                            <input type="text" id="new-prod-img4" name="img_4" placeholder="Foto 4" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 12px;">
+
+                            <label style="font-weight: 700; font-size: 13px;">Descrição do Produto:</label>
+                            <textarea id="new-prod-desc" name="description" style="width: 100%; height: 80px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px;"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Todas as Variáveis Gráficas do ChatGPT Mapeadas -->
+                    <h4 style="margin: 20px 0 10px; color: #0f172a; font-size: 14px;">⚙️ Atributos Gráficos Ativos deste Produto:</h4>
+                    <div class="variables-grid">
+                        <div>
+                            <div class="var-group-title">Medidas & Formatos</div>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_sqm_calc" checked> Largura x Altura (cm)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_min_sqm" checked> Trava de 0,5 m² Mínimo</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_format_fixed"> Formatos Fixos (A3, A4, 88x48mm)</label>
+                        </div>
+                        <div>
+                            <div class="var-group-title">Substratos & Materiais</div>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_adesivo" checked> Vinil Adesivo (Brilho/Fosco)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_lona" checked> Lona Frontlight 440g</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_papeis"> Papéis Couchê (90g, 150g, 300g)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_rigidos"> Rígidos (ACM, Acrílico, PVC, MDF)</label>
+                        </div>
+                        <div>
+                            <div class="var-group-title">Acabamentos & Processos</div>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_laminacao" checked> Laminação (Fosca / Brilho)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_verniz"> Verniz Localizado</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_ilhos" checked> Ilhós e Reforço / Bainha</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_laser"> Corte Especial a Laser / Recorte</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_dobra"> Dobra / Vinco / Serrilha</label>
+                        </div>
+                        <div>
+                            <div class="var-group-title">Serviços & Segurança</div>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_serv_arte" checked> Taxa de Arte (+ R$ 40,00)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_escape_custom" checked disabled> Opção "Personalizável / Outro"</label>
+                        </div>
+                    </div>
+
+                    <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 15px; border-radius: 6px; margin: 15px 0;">
+                        <strong>Prévia Automática das Margens:</strong><br>
+                        Revenda (+50%): <strong id="preview-revenda" style="color: #16a34a;">R$ 0,00</strong> | 
+                        Cliente Final (+100%): <strong id="preview-cliente" style="color: #c2410c;">R$ 0,00</strong>
+                    </div>
+
+                    <button type="submit" id="btn-submit-prod" style="background: #16a34a; color: #fff; padding: 12px 24px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        Salvar Produto no Banco
+                    </button>
+                </form>
+
+                <h3>Produtos Existentes</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Tipo</th>
+                            <th>Custo Base</th>
+                            <th>Revenda (+50%)</th>
+                            <th>Cliente Final (+100%)</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-products-tbody"></tbody>
+                </table>
+            </section>
+
+            <!-- SEÇÃO 4: USUÁRIOS -->
+            <section id="sec-usuarios" class="admin-section">
+                <h2>Base Completa de Usuários</h2>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Modalidade</th>
+                            <th>Status do Acesso</th>
+                            <th>Ações Administrativas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-users-tbody"></tbody>
+                </table>
+            </section>
+
+            <!-- SEÇÃO 5: CONFIGURAÇÕES GLOBAIS -->
+            <section id="sec-config" class="admin-section">
+                <h2>Regras Globais do E-commerce</h2>
+                <div style="max-width: 500px; margin-top: 20px;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-weight: 700; display: block;">Margem Padrão de Revenda (%):</label>
+                        <input type="number" id="cfg-reseller-margin" value="50" disabled style="width: 100%; padding: 8px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-weight: 700; display: block;">Margem Padrão de Cliente Final (%):</label>
+                        <input type="number" id="cfg-retail-margin" value="100" disabled style="width: 100%; padding: 8px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-weight: 700; display: block;">Taxa de Criação de Arte (R$):</label>
+                        <input type="number" id="cfg-art-fee" value="40" disabled style="width: 100%; padding: 8px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-weight: 700; display: block;">Área Mínima Cobrada (m²):</label>
+                        <input type="number" id="cfg-min-area" value="0.5" disabled style="width: 100%; padding: 8px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-weight: 700; display: block;">WhatsApp de Fechamento:</label>
+                        <input type="text" id="cfg-whatsapp" value="+5511949141803" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
 
-    <!-- Cabeçalho Original -->
-    <header class="header" id="header" style="top: 37px;">
-        <div class="container">
-            <div class="header-content">
-                <a href="#" class="logo-header">
-                    <img src="logo_cabecalho.png" alt="Vidal Design Solutions - Logo" onerror="this.src='logo.png'">
-                </a>
-                
-                <nav class="nav-menu" id="navMenu">
-                    <ul class="nav-list">
-                        <li><a href="#home" class="nav-link active">Home</a></li>
-                        <li><a href="#produtos" class="nav-link">Produtos</a></li>
-                        <li><a href="#categorias" class="nav-link">Categorias</a></li>
-                        <li><a href="#sobre" class="nav-link">Sobre Nós</a></li>
-                        <li><a href="#contato" class="nav-link">Contato</a></li>
-                    </ul>
-                </nav>
-                
-                <div class="header-actions">
-                    <a href="pages/carrinho.html" class="cart-btn" id="cartBtn">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span class="cart-count" id="cartCount">0</span>
-                    </a>
-                    <a href="https://wa.me/5511968649673?text=Olá! Vim pelo site e gostaria de fazer um orçamento." 
-                       class="whatsapp-btn" target="_blank">
-                        <i class="fab fa-whatsapp"></i>
-                        <span class="btn-text">Orçamento</span>
-                    </a>
-                    <button class="mobile-toggle" id="mobileToggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Hero Section Original -->
-    <section class="hero" id="home" style="padding-top: 10rem;">
-        <div class="hero-bg"></div>
-        <div class="container">
-            <div class="hero-content">
-                <div class="hero-text">
-                    <span class="hero-tag">Desde 2007</span>
-                    <h1 class="hero-title">
-                        Soluções em <span class="highlight">Comunicação Visual</span> que fazem seu negócio brilhar
-                    </h1>
-                    <p class="hero-description">
-                        Atendimento de alta qualidade, sinalização profissional, toldos, fachadas, impressos e social mídia. 
-                        Entrega rápida para todo o Brasil com atendimento personalizado.
-                    </p>
-                    <div class="hero-buttons">
-                        <a href="#produtos" class="btn btn-primary">
-                            <i class="fas fa-shopping-bag"></i>
-                            Ver Produtos
-                        </a>
-                        <a href="https://wa.me/5511968649673?text=Olá! Vim pelo site e gostaria de fazer um orçamento." 
-                           class="btn btn-secondary" target="_blank">
-                            <i class="fab fa-whatsapp"></i>
-                            Falar no WhatsApp
-                        </a>
-                    </div>
-                </div>
-                <div class="hero-image">
-                    <img src="assets/images/produtos/imagem-hero.jpg" alt="Vidal Design Solutions" style="width: 100%; height: auto; border-radius: var(--radius-2xl); box-shadow: var(--shadow-2xl);" onerror="this.src='https://via.placeholder.com/600x450/1e3a8a/ffffff?text=Vidal+Design+Solutions'">
-                </div>
-            </div>
-        </div>
-        <div class="hero-wave">
-            <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="white"/>
-            </svg>
-        </div>
-    </section>
-
-    <!-- Categorias Originais -->
-    <section class="categories" id="categorias">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">Nossas Especialidades</span>
-                <h2 class="section-title">Categorias em Destaque</h2>
-            </div>
-            
-            <div class="categories-grid">
-                <div class="category-card" onclick="filterByCategory('adesivos')">
-                    <div class="category-icon"><i class="fas fa-sticky-note"></i></div>
-                    <h3>Adesivos</h3>
-                    <span class="category-count">Ver produtos</span>
-                </div>
-                <div class="category-card" onclick="filterByCategory('banners')">
-                    <div class="category-icon"><i class="fas fa-scroll"></i></div>
-                    <h3>Banners e Lonas</h3>
-                    <span class="category-count">Ver produtos</span>
-                </div>
-                <div class="category-card" onclick="filterByCategory('papelaria')">
-                    <div class="category-icon"><i class="fas fa-file-alt"></i></div>
-                    <h3>Papelaria</h3>
-                    <span class="category-count">Ver produtos</span>
-                </div>
-                <div class="category-card" onclick="filterByCategory('automotivo')">
-                    <div class="category-icon"><i class="fas fa-car"></i></div>
-                    <h3>Automotivo</h3>
-                    <span class="category-count">Ver produtos</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Catálogo de Produtos Original -->
-    <section class="products" id="produtos">
-        <div class="container">
-            <div class="section-header">
-                <span class="section-tag">Catálogo 2026</span>
-                <h2 class="section-title">Nossos Produtos</h2>
-            </div>
-            <div class="products-grid" id="productsGrid"></div>
-        </div>
-    </section>
-
-    <!-- Seção Sobre Nós Original -->
-    <section class="about" id="sobre">
-        <div class="container">
-            <div class="about-content">
-                <div class="about-image" style="position: relative; overflow: hidden; border-radius: var(--radius-2xl); box-shadow: var(--shadow-2xl);">
-                    <img id="aboutSlider" src="assets/images/sobre-1.jpg" alt="Estrutura Vidal Design Solutions" 
-                         style="width: 100%; height: auto; aspect-ratio: 4/3; object-fit: cover; transition: opacity 0.5s ease-in-out; background-color: var(--primary); display: block;" 
-                         onerror="this.src='https://via.placeholder.com/800x600/1e3a8a/ffffff?text=Estrutura+Vidal+Design'">
-                </div>
-                
-                <div class="about-text">
-                    <span class="section-tag">Sobre Nós</span>
-                    <h2 class="section-title">Vidal Design Solutions</h2>
-                    <p class="about-description">
-                        Com mais de <strong>18 anos de experiência</strong> no mercado de comunicação visual, a Vidal Design Solutions foi fundada em 2007 por Gilney e Elizete Vidal. Nossa trajetória é marcada pelo compromisso com a qualidade e a satisfação de milhares de clientes.
-                    </p>
-                    <p class="about-description">
-                        Contamos com estrutura própria para produção de adesivos, banners, fachadas e sinalização, garantindo controle total sobre o prazo e o acabamento de cada peça que sai de nossa oficina.
-                    </p>
-                    
-                    <div class="about-stats">
-                        <div class="stat-item">
-                            <span class="stat-number">150+</span>
-                            <span class="stat-label">Produtos</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number">18+</span>
-                            <span class="stat-label">Anos de História</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-number" style="color: var(--secondary);"><i class="fas fa-heart"></i></span>
-                            <span class="stat-label">Empresa Familiar</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Rodapé Original com Contatos Reais -->
-    <footer class="footer" id="contato">
-        <div class="container">
-            <div class="footer-grid">
-                <div class="footer-brand">
-                    <div class="logo-footer">
-                        <img src="logo.png" alt="Vidal Design Solutions - Logo">
-                    </div>
-                    <p class="footer-description">
-                        Soluções completas em comunicação visual desde 2007. 
-                        Qualidade, agilidade e atendimento personalizado.
-                    </p>
-                    <div class="footer-social">
-                        <a href="https://www.facebook.com/share/1BqrEs4rEr/" target="_blank" class="social-link" aria-label="Facebook">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="https://www.instagram.com/vidaldesignsolutions?igsh=MTYxbTgxazY5ZzI1OQ==" target="_blank" class="social-link" aria-label="Instagram">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                    </div>
-                    
-                    <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; max-width: 250px;">
-                        <a href="https://photos.app.goo.gl/HiRZfa4eNnUpwyca7" target="_blank" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.1); border-radius: var(--radius-md); color: white; font-size: 0.85rem; transition: background 0.3s; text-decoration: none;">
-                            <i class="fas fa-images" style="color: var(--accent);"></i> Nosso Álbum de Fotos
-                        </a>
-                        <a href="https://g.page/r/CXNPrWMbM0IZEBM/review" target="_blank" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.1); border-radius: var(--radius-md); color: white; font-size: 0.85rem; transition: background 0.3s; text-decoration: none;">
-                            <i class="fas fa-star" style="color: var(--accent);"></i> Avalie-nos no Google
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="footer-links">
-                    <h4>Links Rápidos</h4>
-                    <ul>
-                        <li><a href="#home">Home</a></li>
-                        <li><a href="#produtos">Produtos</a></li>
-                        <li><a href="#sobre">Sobre Nós</a></li>
-                        <li><a href="#contato">Contato</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-links">
-                    <h4>Categorias</h4>
-                    <ul>
-                        <li><a href="#" onclick="filterByCategory('adesivos'); return false;">Adesivos</a></li>
-                        <li><a href="#" onclick="filterByCategory('banners'); return false;">Banners e Lonas</a></li>
-                        <li><a href="#" onclick="filterByCategory('automotivo'); return false;">Automotivo</a></li>
-                        <li><a href="#" onclick="filterByCategory('papelaria'); return false;">Papelaria</a></li>
-                        <li><a href="#" onclick="filterByCategory('vest
+    <script src="../assets/js/supabaseClient.js"></script>
+    <script src="../assets/js/auth.js"></script>
+    <script src="../assets/js/admin.js"></script>
+</body>
+</html>
