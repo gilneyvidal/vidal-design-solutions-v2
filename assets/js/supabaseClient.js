@@ -1,24 +1,27 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/supabaseClient.js
-// OBJETIVO: Cliente Central de Conexão com o Supabase e Métodos de Autenticação
+// OBJETIVO: Conexão Segura com Supabase usando a chave pública (anon)
 // ==============================================================================
 
-// 1. Configurações Públicas do Projeto Supabase
-// (Obtenha em: Supabase Dashboard > Project Settings > API)
+// 1. Configurações Públicas do Projeto
+// URL do seu projeto (conforme visto no seu painel)
 const SUPABASE_URL = https://ibaavtapoqbvcbbqynxs.supabase.co/rest/v1/;
+
+// ATENÇÃO: Cole aqui APENAS a chave "anon" "public" (Project Settings > API > anon public)
+// NUNCA cole a service_role secret aqui!
 const SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliYWF2dGFwb3FidmNiYnF5bnhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzE3NjUsImV4cCI6MjEwMzM0Nzc2NX0.PhXhDc8bd5c2msSa_mQuLsTDfn5MY5cjNbjJS-7EHc0;
 
-// 2. Inicialização do Cliente Supabase via biblioteca CDN
+// 2. Inicialização do Cliente Supabase
 const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 if (!supabaseClient) {
-    console.error('Biblioteca do Supabase não carregada. Verifique se o script CDN está presente no HTML.');
+    console.error('Biblioteca do Supabase não carregada. Verifique o script CDN no HTML.');
 }
 
 // 3. Objeto de Controle de Autenticação
 const AuthController = {
-    // Inicia login social com o Google
+    // Inicia login social com Google
     async loginWithGoogle() {
         if (!supabaseClient) return;
         try {
@@ -35,7 +38,7 @@ const AuthController = {
         }
     },
 
-    // Encerra a sessão do usuário
+    // Encerra a sessão
     async logout() {
         if (!supabaseClient) return;
         try {
@@ -47,14 +50,14 @@ const AuthController = {
         }
     },
 
-    // Obtém o usuário atualmente autenticado
+    // Retorna usuário logado
     async getCurrentUser() {
         if (!supabaseClient) return null;
         const { data: { session } } = await supabaseClient.auth.getSession();
         return session ? session.user : null;
     },
 
-    // Carrega o perfil e a situação de triagem do usuário da tabela v2_profiles
+    // Carrega o perfil da tabela v2_profiles
     async getUserProfile(userId) {
         if (!supabaseClient || !userId) return null;
         try {
@@ -72,23 +75,23 @@ const AuthController = {
         }
     },
 
-    // Solicita enquadramento como Revenda com upload de comprovação
+    // Envio de Comprovante de Revenda usando seu bucket "reseller-proofs"
     async submitResellerApplication(userId, file) {
         if (!supabaseClient || !userId || !file) return { success: false, error: 'Dados incompletos.' };
 
         try {
-            // Upload do documento de comprovação para o bucket restrito
             const fileExt = file.name.split('.').pop();
-            const fileName = `${userId}_revenda_${Date.now()}.${fileExt}`;
+            const fileName = `${userId}_comprovante_${Date.now()}.${fileExt}`;
             const filePath = `solicitacoes/${fileName}`;
 
+            // Upload para o bucket existente "reseller-proofs"
             const { error: uploadError } = await supabaseClient.storage
-                .from('v2_documents')
+                .from('reseller-proofs')
                 .upload(filePath, file, { upsert: true });
 
             if (uploadError) throw uploadError;
 
-            // Atualiza a solicitação no perfil do usuário
+            // Atualiza status para pendente de triagem
             const { error: updateError } = await supabaseClient
                 .from('v2_profiles')
                 .update({
@@ -102,7 +105,7 @@ const AuthController = {
 
             return { success: true };
         } catch (err) {
-            console.error('Erro ao enviar comprovação de revenda:', err.message);
+            console.error('Erro ao enviar comprovação:', err.message);
             return { success: false, error: err.message };
         }
     }
