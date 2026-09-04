@@ -3,151 +3,467 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vidal Design Solutions | Gráfica & Comunicação Visual</title>
+    <meta name="description" content="Vidal Design Solutions - Materiais Gráficos, Sinalização, Toldos e Fachadas. Qualidade e agilidade para seu negócio.">
+    <meta name="keywords" content="gráfica, adesivos, banners, sinalização, toldos, fachadas, São Paulo, Mogi das Cruzes">
+    <meta name="author" content="Vidal Design Solutions">
+    
+    <meta property="og:title" content="Vidal Design Solutions - Soluções em Comunicação Visual">
+    <meta property="og:description" content="Materiais gráficos de qualidade com entrega rápida para todo o Brasil.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://vidaldesignsolutions.com.br">
+    <meta property="og:image" content="https://vidaldesignsolutions.com.br/logo.png">
+    
+    <!-- Google Tag Manager / Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    
+    <title>Vidal Design Solutions | Comunicação Visual</title>
+    
+    <!-- Tipografia Original -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Ícones FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="icon" type="image/png" href="logo.png">
+    
+    <!-- Estilos Originais -->
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
 
     <!-- Supabase JS Client Oficial -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- Estilo Visual Oficial Integrado V2 -->
+    
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { background: #f8f9fa; color: #212529; }
-
-        /* Top Bar de Autenticação */
-        .top-auth-bar { background: #111; color: #fff; padding: 8px 20px; font-size: 13px; border-bottom: 1px solid #222; }
-        .top-auth-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        /* Logo Styles - HEADER */
+        .logo-header {
+            display: flex;
+            align-items: center;
+            height: 60px;
+        }
         
-        .auth-status-pill { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; }
-        .badge-guest { background: #424242; color: #fff; }
-        .badge-pending { background: #f57c00; color: #fff; }
-        .badge-cliente { background: #1976d2; color: #fff; }
-        .badge-revenda { background: #2e7d32; color: #fff; }
-        .badge-master { background: #7b1fa2; color: #fff; }
-        .badge-blocked { background: #d32f2f; color: #fff; }
+        .logo-header img {
+            height: 100%;
+            width: auto;
+            max-width: 220px;
+            object-fit: contain;
+        }
+        
+        /* Logo Styles - FOOTER */
+        .logo-footer {
+            display: flex;
+            align-items: center;
+            height: 50px;
+            margin-bottom: 1rem;
+        }
+        
+        .logo-footer img {
+            height: 100%;
+            width: auto;
+            max-width: 180px;
+            object-fit: contain;
+        }
+        
+        .category-card {
+            cursor: pointer;
+        }
+
+        /* Barra Superior de Autenticação V2 perfeitamente harmonizada */
+        .top-auth-bar {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 8px 0;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            z-index: 1001;
+        }
+        .top-auth-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .auth-status-pill {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .badge-guest { background: #334155; color: #cbd5e1; }
+        .badge-pending { background: #ea580c; color: #fff; }
+        .badge-cliente { background: #2563eb; color: #fff; }
+        .badge-revenda { background: #16a34a; color: #fff; }
+        .badge-master { background: #9333ea; color: #fff; }
+        .badge-blocked { background: #dc2626; color: #fff; }
 
         .btn-google-login {
-            display: inline-flex; align-items: center; background: #fff; color: #333;
-            border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; font-size: 13px;
-            cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            background: #ffffff;
+            color: #1e293b;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
-        .btn-google-login:hover { transform: scale(1.02); }
-        .btn-admin-pill { background: #7b1fa2; color: #fff; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; }
-        .btn-revenda-pill { background: #2e7d32; color: #fff; padding: 4px 10px; border-radius: 4px; border: none; font-size: 12px; cursor: pointer; }
-        .btn-logout-pill { background: transparent; color: #aaa; border: 1px solid #444; padding: 3px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; }
-
-        /* Cabeçalho Principal */
-        .main-header { background: #1a1a1a; padding: 15px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .header-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
-        .brand-logo-text { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 1px; text-decoration: none; }
-        .brand-logo-text span { color: #ff9800; }
-        .main-nav { display: flex; gap: 20px; align-items: center; }
-        .main-nav a { color: #ddd; text-decoration: none; font-size: 15px; font-weight: 500; transition: color 0.2s; }
-        .main-nav a:hover, .main-nav a.active { color: #ff9800; }
-        .cart-nav-link { background: #2e7d32; color: #fff !important; padding: 6px 14px; border-radius: 20px; }
-
-        /* Hero Banner */
-        .hero-banner {
-            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.8)), #222;
-            color: #fff; text-align: center; padding: 70px 20px;
+        .btn-google-login:hover {
+            background: #f1f5f9;
+            transform: translateY(-1px);
         }
-        .hero-content { max-width: 800px; margin: 0 auto; }
-        .hero-badge { background: #ff9800; color: #111; font-weight: bold; font-size: 12px; padding: 4px 12px; border-radius: 20px; display: inline-block; margin-bottom: 15px; }
-        .hero-banner h1 { font-size: 34px; margin-bottom: 15px; font-weight: 800; }
-        .hero-banner p { font-size: 16px; color: #ccc; margin-bottom: 25px; line-height: 1.5; }
-        .btn-cta { background: #ff9800; color: #111; padding: 12px 28px; border-radius: 6px; font-weight: bold; text-decoration: none; font-size: 16px; display: inline-block; }
-
-        /* Catálogo */
-        .catalog-section { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
-        .section-title { text-align: center; margin-bottom: 40px; }
-        .section-title h2 { font-size: 28px; color: #1a1a1a; margin-bottom: 8px; }
-        .section-subtitle { color: #666; font-size: 15px; }
-        
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 25px; }
-        .product-card { background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); transition: transform 0.2s; display: flex; flex-direction: column; }
-        .product-card:hover { transform: translateY(-4px); }
-        .product-thumb-wrapper { position: relative; height: 180px; background: #eee; }
-        .product-thumb { width: 100%; height: 100%; object-fit: cover; }
-        .deadline-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); color: #fff; padding: 3px 8px; border-radius: 4px; font-size: 11px; }
-        .product-info { padding: 18px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .product-title { font-size: 17px; margin-bottom: 8px; color: #1a1a1a; }
-        .product-desc { font-size: 13px; color: #666; margin-bottom: 15px; flex-grow: 1; }
-        .price-box { margin: 10px 0; }
-        .price-label { font-size: 11px; color: #888; display: block; }
-        .price-value { font-size: 20px; font-weight: bold; color: #d84315; }
-        .price-locked-box { background: #fdf7e7; padding: 8px; border-radius: 4px; border-left: 3px solid #ff9800; font-size: 12px; margin: 10px 0; }
-        .btn-config-product { display: block; text-align: center; background: #1a1a1a; color: #fff; text-decoration: none; padding: 10px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-top: 10px; }
-        .btn-config-product:hover { background: #ff9800; color: #111; }
-
-        /* Rodapé */
-        .main-footer { background: #111; color: #888; text-align: center; padding: 30px 20px; margin-top: 60px; font-size: 13px; }
-
-        /* Modais */
-        .custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: none; justify-content: center; align-items: center; z-index: 9999; }
-        .modal-content { background: #fff; padding: 25px; border-radius: 8px; max-width: 480px; width: 90%; }
-        .btn-primary { background: #2e7d32; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-secondary { background: #eee; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn-admin-pill {
+            background: #9333ea;
+            color: #fff !important;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .btn-revenda-pill {
+            background: #16a34a;
+            color: #fff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .btn-logout-pill {
+            background: transparent;
+            color: #94a3b8;
+            border: 1px solid #475569;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Barra de Autenticação V2 -->
+    <!-- Barra Superior de Autenticação V2 -->
     <div class="top-auth-bar">
-        <div class="top-auth-inner">
-            <span>Vidal Design Solutions • Portal Oficial V2</span>
+        <div class="container top-auth-inner">
+            <span><i class="fas fa-shield-alt" style="color: var(--secondary);"></i> Vidal Design Solutions • Portal V2</span>
             <div id="auth-user-container">
                 <button id="btn-login-google-placeholder" class="btn-google-login">
-                    Entrar com Google
+                    <i class="fab fa-google" style="color: #ea4335; margin-right: 6px;"></i> Entrar com Google
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Cabeçalho -->
-    <header class="main-header">
-        <div class="header-container">
-            <a href="index.html" class="brand-logo-text">
-                VIDAL <span>DESIGN SOLUTIONS</span>
-            </a>
-            <nav class="main-nav">
-                <a href="index.html" class="active">Início</a>
-                <a href="#catalogo">Catálogo</a>
-                <a href="pages/carrinho.html" class="cart-nav-link">
-                    🛒 Carrinho (<span id="cart-counter">0</span>)
+    <!-- Cabeçalho Original -->
+    <header class="header" id="header" style="top: 37px;">
+        <div class="container">
+            <div class="header-content">
+                <a href="#" class="logo-header">
+                    <img src="logo_cabecalho.png" alt="Vidal Design Solutions - Logo" onerror="this.src='logo.png'">
                 </a>
-            </nav>
+                
+                <nav class="nav-menu" id="navMenu">
+                    <ul class="nav-list">
+                        <li><a href="#home" class="nav-link active">Home</a></li>
+                        <li><a href="#produtos" class="nav-link">Produtos</a></li>
+                        <li><a href="#categorias" class="nav-link">Categorias</a></li>
+                        <li><a href="#sobre" class="nav-link">Sobre Nós</a></li>
+                        <li><a href="#contato" class="nav-link">Contato</a></li>
+                    </ul>
+                </nav>
+                
+                <div class="header-actions">
+                    <a href="pages/carrinho.html" class="cart-btn" id="cartBtn">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-count" id="cartCount">0</span>
+                    </a>
+                    <a href="https://wa.me/5511968649673?text=Olá! Vim pelo site e gostaria de fazer um orçamento." 
+                       class="whatsapp-btn" target="_blank">
+                        <i class="fab fa-whatsapp"></i>
+                        <span class="btn-text">Orçamento</span>
+                    </a>
+                    <button class="mobile-toggle" id="mobileToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
 
-    <!-- Banner -->
-    <section class="hero-banner">
-        <div class="hero-content">
-            <span class="hero-badge">Desde 2007 • Mogi das Cruzes</span>
-            <h1>Comunicação Visual, Lonas, Adesivos e Fachadas</h1>
-            <p>Soluções completas com impressão digital de alta definição, corte a laser e acabamento premium para valorizar a sua marca.</p>
-            <a href="#catalogo" class="btn-cta">Ver Catálogo</a>
+    <!-- Hero Section Original -->
+    <section class="hero" id="home" style="padding-top: 10rem;">
+        <div class="hero-bg"></div>
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <span class="hero-tag">Desde 2007</span>
+                    <h1 class="hero-title">
+                        Soluções em <span class="highlight">Comunicação Visual</span> que fazem seu negócio brilhar
+                    </h1>
+                    <p class="hero-description">
+                        Atendimento de alta qualidade, sinalização profissional, toldos, fachadas, impressos e social mídia. 
+                        Entrega rápida para todo o Brasil com atendimento personalizado.
+                    </p>
+                    <div class="hero-buttons">
+                        <a href="#produtos" class="btn btn-primary">
+                            <i class="fas fa-shopping-bag"></i>
+                            Ver Produtos
+                        </a>
+                        <a href="https://wa.me/5511968649673?text=Olá! Vim pelo site e gostaria de fazer um orçamento." 
+                           class="btn btn-secondary" target="_blank">
+                            <i class="fab fa-whatsapp"></i>
+                            Falar no WhatsApp
+                        </a>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <img src="assets/images/produtos/imagem-hero.jpg" alt="Vidal Design Solutions" style="width: 100%; height: auto; border-radius: var(--radius-2xl); box-shadow: var(--shadow-2xl);" onerror="this.src='https://via.placeholder.com/600x450/1e3a8a/ffffff?text=Vidal+Design+Solutions'">
+                </div>
+            </div>
+        </div>
+        <div class="hero-wave">
+            <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="white"/>
+            </svg>
         </div>
     </section>
 
-    <!-- Catálogo -->
-    <section id="catalogo" class="catalog-section">
-        <div class="section-title">
-            <h2>Catálogo de Produtos</h2>
-            <p class="section-subtitle" id="catalog-subtitle">Selecione o produto para configurar medidas e acabamentos</p>
-        </div>
-        <div class="products-grid" id="products-grid">
-            <!-- Renderizado dinamicamente pelo products.js -->
+    <!-- Categorias Originais -->
+    <section class="categories" id="categorias">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Nossas Especialidades</span>
+                <h2 class="section-title">Categorias em Destaque</h2>
+            </div>
+            
+            <div class="categories-grid">
+                <div class="category-card" onclick="filterByCategory('adesivos')">
+                    <div class="category-icon"><i class="fas fa-sticky-note"></i></div>
+                    <h3>Adesivos</h3>
+                    <span class="category-count">Ver produtos</span>
+                </div>
+                <div class="category-card" onclick="filterByCategory('banners')">
+                    <div class="category-icon"><i class="fas fa-scroll"></i></div>
+                    <h3>Banners e Lonas</h3>
+                    <span class="category-count">Ver produtos</span>
+                </div>
+                <div class="category-card" onclick="filterByCategory('papelaria')">
+                    <div class="category-icon"><i class="fas fa-file-alt"></i></div>
+                    <h3>Papelaria</h3>
+                    <span class="category-count">Ver produtos</span>
+                </div>
+                <div class="category-card" onclick="filterByCategory('automotivo')">
+                    <div class="category-icon"><i class="fas fa-car"></i></div>
+                    <h3>Automotivo</h3>
+                    <span class="category-count">Ver produtos</span>
+                </div>
+            </div>
         </div>
     </section>
 
-    <!-- Rodapé -->
-    <footer class="main-footer">
-        <p>&copy; 2026 Vidal Design Solutions. Todos os direitos reservados.</p>
-        <p>Mogi das Cruzes - SP | Atendimento presencial e entregas regionais.</p>
+    <!-- Catálogo de Produtos Original -->
+    <section class="products" id="produtos">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">Catálogo 2026</span>
+                <h2 class="section-title">Nossos Produtos</h2>
+            </div>
+            <div class="products-grid" id="productsGrid"></div>
+        </div>
+    </section>
+
+    <!-- Seção Sobre Nós Original com Slider de Imagens -->
+    <section class="about" id="sobre">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-image" style="position: relative; overflow: hidden; border-radius: var(--radius-2xl); box-shadow: var(--shadow-2xl);">
+                    <img id="aboutSlider" src="assets/images/sobre-1.jpg" alt="Estrutura Vidal Design Solutions" 
+                         style="width: 100%; height: auto; aspect-ratio: 4/3; object-fit: cover; transition: opacity 0.5s ease-in-out; background-color: var(--primary); display: block;" 
+                         onerror="this.src='https://via.placeholder.com/800x600/1e3a8a/ffffff?text=Estrutura+Vidal+Design'">
+                </div>
+                
+                <div class="about-text">
+                    <span class="section-tag">Sobre Nós</span>
+                    <h2 class="section-title">Vidal Design Solutions</h2>
+                    <p class="about-description">
+                        Com mais de <strong>18 anos de experiência</strong> no mercado de comunicação visual, a Vidal Design Solutions foi fundada em 2007 por Gilney e Elizete Vidal. Nossa trajetória é marcada pelo compromisso com a qualidade e a satisfação de milhares de clientes.
+                    </p>
+                    <p class="about-description">
+                        Contamos com estrutura própria para produção de adesivos, banners, fachadas e sinalização, garantindo controle total sobre o prazo e o acabamento de cada peça que sai de nossa oficina.
+                    </p>
+                    
+                    <div class="about-stats">
+                        <div class="stat-item">
+                            <span class="stat-number">150+</span>
+                            <span class="stat-label">Produtos</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">18+</span>
+                            <span class="stat-label">Anos de História</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" style="color: var(--secondary);"><i class="fas fa-heart"></i></span>
+                            <span class="stat-label">Empresa Familiar</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Rodapé Original com Dados Reais de Contato -->
+    <footer class="footer" id="contato">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo-footer">
+                        <img src="logo.png" alt="Vidal Design Solutions - Logo">
+                    </div>
+                    <p class="footer-description">
+                        Soluções completas em comunicação visual desde 2007. 
+                        Qualidade, agilidade e atendimento personalizado.
+                    </p>
+                    <div class="footer-social">
+                        <a href="https://www.facebook.com/share/1BqrEs4rEr/" target="_blank" class="social-link" aria-label="Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="https://www.instagram.com/vidaldesignsolutions?igsh=MTYxbTgxazY5ZzI1OQ==" target="_blank" class="social-link" aria-label="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; max-width: 250px;">
+                        <a href="https://photos.app.goo.gl/HiRZfa4eNnUpwyca7" target="_blank" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.1); border-radius: var(--radius-md); color: white; font-size: 0.85rem; transition: background 0.3s; text-decoration: none;">
+                            <i class="fas fa-images" style="color: var(--accent);"></i> Nosso Álbum de Fotos
+                        </a>
+                        <a href="https://g.page/r/CXNPrWMbM0IZEBM/review" target="_blank" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(255,255,255,0.1); border-radius: var(--radius-md); color: white; font-size: 0.85rem; transition: background 0.3s; text-decoration: none;">
+                            <i class="fas fa-star" style="color: var(--accent);"></i> Avalie-nos no Google
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Links Rápidos</h4>
+                    <ul>
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#produtos">Produtos</a></li>
+                        <li><a href="#sobre">Sobre Nós</a></li>
+                        <li><a href="#contato">Contato</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-links">
+                    <h4>Categorias</h4>
+                    <ul>
+                        <li><a href="#" onclick="filterByCategory('adesivos'); return false;">Adesivos</a></li>
+                        <li><a href="#" onclick="filterByCategory('banners'); return false;">Banners e Lonas</a></li>
+                        <li><a href="#" onclick="filterByCategory('automotivo'); return false;">Automotivo</a></li>
+                        <li><a href="#" onclick="filterByCategory('papelaria'); return false;">Papelaria</a></li>
+                        <li><a href="#" onclick="filterByCategory('vestuario'); return false;">Vestuário</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-contact">
+                    <h4>Contato</h4>
+                    <ul class="contact-list">
+                        <li>
+                            <i class="fab fa-whatsapp"></i>
+                            <div>
+                                <span>WhatsApp (Gilney)</span>
+                                <a href="https://wa.me/5511968649673" target="_blank">(11) 96864-9673</a>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="fab fa-whatsapp"></i>
+                            <div>
+                                <span>WhatsApp (Elisete)</span>
+                                <a href="https://wa.me/5511949141803" target="_blank">(11) 94914-1803</a>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="fas fa-envelope"></i>
+                            <div>
+                                <span>Email</span>
+                                <a href="mailto:vidaldesignsolutions@gmail.com">vidaldesignsolutions@gmail.com</a>
+                            </div>
+                        </li>
+                        <li>
+                            <i class="fas fa-map-marker-alt"></i>
+                            <div>
+                                <span>Endereço</span>
+                                <a href="https://www.google.com/maps/search/?api=1&query=Rua+Antonio+Cordeiro,+57+-+São+João+-+Mogi+das+Cruzes+SP" target="_blank" style="line-height: 1.4; display: inline-block;">
+                                    Rua Antonio Cordeiro, 57<br>São João - Mogi das Cruzes, SP
+                                </a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>© 2026 Vidal Design Solutions. Todos os direitos reservados.</p>
+            </div>
+        </div>
     </footer>
 
-    <!-- Scripts Conectados na Ordem Correta -->
+    <!-- Botão Flutuante do WhatsApp Original -->
+    <a href="https://wa.me/5511968649673" class="whatsapp-float" target="_blank">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <!-- Scripts da Plataforma V2 e Originais Conectados -->
     <script src="assets/js/supabaseClient.js"></script>
     <script src="assets/js/auth.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/cart.js"></script>
     <script src="assets/js/products.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const imagens = [
+                'assets/images/sobre-1.jpg',
+                'assets/images/sobre-2.jpg',
+                'assets/images/sobre-3.jpg',
+                'assets/images/sobre-4.jpg',
+                'assets/images/sobre-5.jpg',
+                'assets/images/sobre-6.jpg',
+                'assets/images/sobre-7.jpg',
+                'assets/images/sobre-8.jpg',
+                'assets/images/sobre-9.jpg',
+                'assets/images/sobre-10.jpg'
+            ];
+            
+            let i = 0;
+            const imgEl = document.getElementById('aboutSlider');
+            
+            if (imgEl && imagens.length > 0) {
+                setInterval(() => {
+                    imgEl.style.opacity = '0.2'; 
+                    setTimeout(() => {
+                        i = (i + 1) % imagens.length;
+                        imgEl.src = imagens[i];
+                        imgEl.style.opacity = '1';
+                    }, 500);
+                }, 4000); 
+            }
+        });
+
+        function filterByCategory(cat) {
+            const prodSec = document.getElementById('produtos');
+            if (prodSec) prodSec.scrollIntoView({ behavior: 'smooth' });
+            window.dispatchEvent(new CustomEvent('filterProducts', { detail: { category: cat } }));
+        }
+    </script>
 </body>
 </html>
