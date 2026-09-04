@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/products.js
-// OBJETIVO: Catálogo Dinâmico Conectado ao Supabase com Fallback Duplo e Proteção
+// OBJETIVO: Catálogo Dinâmico com Fallback Resiliente e Proteção de Preços
 // ==============================================================================
 
 let productsData = [];
@@ -35,7 +35,6 @@ function initModalStructure() {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
-// Carregamento com Fallback Duplo (Nunca quebra)
 async function loadProductsFromSupabase() {
     const productsGrid = document.getElementById('productsGrid');
     if (!productsGrid) return;
@@ -48,7 +47,6 @@ async function loadProductsFromSupabase() {
             return;
         }
 
-        // Descobre se há usuário logado e qual a modalidade
         let userRole = 'guest';
         if (window.AuthController) {
             const user = await window.AuthController.getCurrentUser();
@@ -69,7 +67,7 @@ async function loadProductsFromSupabase() {
             }
         } catch (e) {}
 
-        // 2. Se a RPC não responder, busca direto na tabela v2_products
+        // 2. Se a RPC falhar ou não trouxer dados, busca direto de v2_products
         if (!rawProducts) {
             const { data: tableData, error: tableErr } = await window.supabaseClient
                 .from('v2_products')
@@ -279,7 +277,7 @@ function openModal(productId) {
                 <i class="fas fa-lock"></i> Preços protegidos para visitantes
             </p>
             <p style="color: #6b7280; font-size: 0.85rem; margin-bottom: 1rem;">
-                Faça login com sua conta Google ou cadastre-se para liberar orçamentos e pedidos.
+                Faça login ou cadastre-se no topo da página para liberar orçamentos e pedidos.
             </p>
             <button class="btn btn-primary" onclick="closeModal(); window.AuthController.loginWithGoogle();">
                 <i class="fab fa-google"></i> Entrar com Google
@@ -296,7 +294,8 @@ function openModal(productId) {
         <h2 style="margin-bottom: 0.5rem;">${currentProduct.name}</h2>
         <p style="color: var(--gray-600); font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.6;">${currentProduct.description}</p>
         <div style="border-top: 1px solid var(--gray-200); padding-top: 1.5rem;">
-            ${dimensionsHTML}${optionsHTML}
+            ${dimensionsHTML}
+            ${optionsHTML}
         </div>
         <div id="modalSummary" style="background: var(--gray-50); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--gray-200); margin-top: 1.5rem; font-size: 0.9rem; color: var(--gray-700); line-height: 1.5;"></div> 
         ${footerHTML}
@@ -325,7 +324,7 @@ function calcTotal() {
     if (currentProduct.calcType === 'area') {
         let areaM2 = (w_cm / 100) * (h_cm / 100);
         let totalAreaLote = areaM2 * qty;
-        summaryText += `- <strong>Medidas:</strong> ${w_cm}cm x${h_cm}cm<br>`;
+        summaryText += `- <strong>Medidas:</strong> ${w_cm}cm x ${h_cm}cm<br>`;
         summaryText += `- <strong>Quantidade:</strong> ${qty} peça(s)<br>`;
         if (w_cm > 0 && h_cm > 0) multiplier = totalAreaLote < 0.5 ? 0.5 : totalAreaLote; 
     } else if (currentProduct.calcType === 'linear') {
@@ -355,7 +354,7 @@ function calcTotal() {
         let choice = opt.choices[selectedIndex];
         if (choice) {
             let cleanLabel = opt.label.replace(':', '');
-            summaryText += `- <strong>${cleanLabel}:</strong>${choice.label}<br>`;
+            summaryText += `- <strong>${cleanLabel}:</strong> ${choice.label}<br>`;
             if (choice.price > 0) {
                 if (choice.isM2) extraM2 += choice.price;
                 else extraFlat += choice.price;
@@ -403,13 +402,13 @@ function confirmModalCart() {
     });
 
     let sizeStr = '';
-    if (currentProduct.calcType === 'area') sizeStr = `(${calcData.w_cm}cm x ${calcData.h_cm}cm) -${calcData.qty} un.`;
-    else if (currentProduct.calcType === 'linear') sizeStr = `(${calcData.w_cm}cm linear) -${calcData.qty} un.`;
+    if (currentProduct.calcType === 'area') sizeStr = `(${calcData.w_cm}cm x ${calcData.h_cm}cm) - ${calcData.qty} un.`;
+    else if (currentProduct.calcType === 'linear') sizeStr = `(${calcData.w_cm}cm linear) - ${calcData.qty} un.`;
     else sizeStr = `- ${calcData.qty} un.`;
 
     const cartItem = {
         id: currentProduct.id + '-' + Date.now(),
-        name: `${currentProduct.name} ${sizeStr}${detailsStr}`,
+        name: `${currentProduct.name} ${sizeStr} ${detailsStr}`,
         category: currentProduct.category,
         basePrice: calcData.finalPrice,
         image: currentProduct.image
