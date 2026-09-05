@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/auth.js
-// OBJETIVO: Barra Superior com Link para Minha Conta / Gerenciar Loja
+// OBJETIVO: Barra Superior com Rótulos Profissionais (Sem Exposição de Margens)
 // ==============================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -59,13 +59,19 @@ function renderLoggedUI(container, user, profile) {
     if (role === 'master') {
         badgeClass = 'badge-master';
         badgeText = '👑 Painel Master';
+    } else if (role === 'gerente') {
+        badgeClass = 'badge-gerente';
+        badgeText = '👔 Gerente';
+    } else if (role === 'vendedor') {
+        badgeClass = 'badge-vendedor';
+        badgeText = '📦 Vendedor / Produção';
     } else if (status === 'aprovado') {
         if (role === 'revenda') {
             badgeClass = 'badge-revenda';
-            badgeText = '⭐ Revenda (50%)';
+            badgeText = '⭐ Revenda Autorizada'; // SEM porcentagem
         } else {
             badgeClass = 'badge-cliente';
-            badgeText = '✅ Cliente Final (100%)';
+            badgeText = '✅ Cliente Final';     // SEM porcentagem
         }
     } else if (status === 'bloqueado') {
         badgeClass = 'badge-blocked';
@@ -75,15 +81,16 @@ function renderLoggedUI(container, user, profile) {
     const isInPages = window.location.pathname.includes('/pages/');
     const accountUrl = isInPages ? 'minha-conta.html' : 'pages/minha-conta.html';
     const adminUrl = isInPages ? 'admin.html' : 'pages/admin.html';
+    const canAccessAdmin = role === 'master' || role === 'gerente' || role === 'vendedor';
 
     container.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span>Olá, <strong>${userName}</strong></span>
             <span class="auth-status-pill ${badgeClass}">${badgeText}</span>
-            <a href="${accountUrl}" class="btn-admin-pill" style="background:#0284c7;">
+            <a href="${accountUrl}" class="btn-account-pill">
                 <i class="fas fa-user"></i> Minha Conta
             </a>
-            ${role === 'master' ? `<a href="${adminUrl}" class="btn-admin-pill"><i class="fas fa-cog"></i> Gerenciar Loja</a>` : ''}
+            ${canAccessAdmin ? `<a href="${adminUrl}" class="btn-admin-pill"><i class="fas fa-cog"></i> Gerenciar Loja</a>` : ''}
             <button id="btn-logout" class="btn-logout-pill" onclick="window.AuthController.logout()">Sair</button>
         </div>
     `;
