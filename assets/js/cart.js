@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/cart.js
-// OBJETIVO: Carrinho com Anexo de Arte, Geração de PDF Fiel e Checkout Duplo
+// OBJETIVO: Carrinho com Checkout Pro Oficial do Mercado Pago e Fallback Seguro
 // ==============================================================================
 
 const CART_STORAGE_KEY = 'vidalCart';
@@ -21,9 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function loadCartFromStorage() {
     try {
         currentCart = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
-    } catch (e) {
-        currentCart = [];
-    }
+    } catch (e) { currentCart = []; }
     updateCartCount();
 }
 
@@ -36,9 +34,7 @@ function saveCartToStorage() {
 function updateCartCount() {
     const counterElements = document.querySelectorAll('#cartCount, #cartItemCount');
     const totalItems = currentCart.reduce((sum, item) => sum + item.quantity, 0);
-    counterElements.forEach(el => {
-        el.textContent = totalItems;
-    });
+    counterElements.forEach(el => el.textContent = totalItems);
 }
 
 window.addToCart = function(product) {
@@ -68,11 +64,7 @@ async function checkUserSession() {
 async function loadGlobalSettings() {
     if (!window.supabaseClient) return;
     try {
-        const { data } = await window.supabaseClient
-            .from('v2_settings')
-            .select('*')
-            .eq('id', 'global')
-            .single();
+        const { data } = await window.supabaseClient.from('v2_settings').select('*').eq('id', 'global').single();
         globalSettings = data;
     } catch (e) {}
 }
@@ -102,9 +94,7 @@ function renderCartPageUI() {
         const itemTotal = unitPrice * item.quantity;
         subtotal += itemTotal;
 
-        if (item.hasArt || (item.name && item.name.includes('Contratar criação'))) {
-            totalArt += 40;
-        }
+        if (item.hasArt || (item.name && item.name.includes('Contratar criação'))) totalArt += 40;
 
         const imgPath = item.image && !item.image.includes('placeholder') ? `../${item.image}` : '../logo.png';
 
@@ -173,7 +163,7 @@ function initCartEvents() {
     });
 }
 
-// Grava o pedido com anexo de arte e todos os itens
+// Grava o pedido com anexo e direciona para o Mercado Pago oficial
 async function processOrderSubmission(paymentMethod) {
     if (!currentCart.length) {
         alert('Seu carrinho está vazio.');
@@ -181,7 +171,7 @@ async function processOrderSubmission(paymentMethod) {
     }
 
     if (!currentUser || !currentProfile) {
-        alert('Faça login com o Google para vincular e emitir seu orçamento oficial.');
+        alert('Faça login com o Google para vincular seu pedido.');
         window.AuthController?.loginWithGoogle();
         return;
     }
@@ -196,13 +186,12 @@ async function processOrderSubmission(paymentMethod) {
         const cidade = document.getElementById('addr-city')?.value;
 
         if (!rua || !num || !cidade) {
-            alert('Por favor, preencha o endereço completo de entrega.');
+            alert('Por favor, preencha o endereço de entrega.');
             return;
         }
         addressData = { rua, numero: num, bairro, cidade };
     }
 
-    // Upload do arquivo de arte se fornecido
     const artworkFileInput = document.getElementById('order-artwork-file');
     const sendViaWpp = document.getElementById('send-artwork-via-wpp')?.checked;
     let artworkFileName = null;
@@ -213,7 +202,7 @@ async function processOrderSubmission(paymentMethod) {
             artworkFileName = `arte_${currentUser.id}_${Date.now()}.${artFile.name.split('.').pop()}`;
             await window.supabaseClient.storage.from('order-documents').upload(`artes/${artworkFileName}`, artFile);
         } catch (uploadErr) {
-            console.warn('Upload de arte pelo site falhou, cliente enviará pelo WhatsApp:', uploadErr);
+            console.warn('Upload de arte pelo portal falhou, cliente enviará pelo WhatsApp:', uploadErr);
         }
     }
 
@@ -224,17 +213,17 @@ async function processOrderSubmission(paymentMethod) {
         if (it.hasArt || (it.name && it.name.includes('Contratar criação'))) artFee += 40;
     });
     const total = subtotal + artFee;
-
-    let notesText = artworkFileName ? `Arquivo de Arte Anexado: ${artworkFileName}` : (sendViaWpp ? 'Arte será enviada via WhatsApp' : 'Sem anexo inicial');
+    let notesText = artworkFileName ? `Arquivo de Arte Anexado: ${artworkFileName}` : (sendViaWpp ? 'Arte será enviada via WhatsApp' : 'Sem anexo');
 
     try {
-        // 1. Inserir Pedido Principal
+        // 1. Grava o pedido
         const { data: orderData, error: orderErr } = await window.supabaseClient
             .from('v2_orders')
             .insert({
                 user_id: currentUser.id,
                 user_role: currentProfile.role || 'cliente_final',
                 status: 'recebido',
+                payment_status: 'pendente',
                 delivery_type: deliveryType,
                 delivery_address: addressData,
                 payment_method: paymentMethod,
@@ -249,7 +238,7 @@ async function processOrderSubmission(paymentMethod) {
 
         if (orderErr) throw orderErr;
 
-        // 2. Inserir Itens na tabela v2_order_items
+        // 2. Grava os itens
         const itemsPayload = currentCart.map(it => ({
             order_id: orderData.id,
             product_name: it.name,
@@ -257,7 +246,6 @@ async function processOrderSubmission(paymentMethod) {
             quantity: it.quantity,
             item_total: it.basePrice * it.quantity
         }));
-
         await window.supabaseClient.from('v2_order_items').insert(itemsPayload);
 
         const savedItems = [...currentCart];
@@ -268,11 +256,29 @@ async function processOrderSubmission(paymentMethod) {
         if (paymentMethod === 'whatsapp') {
             sendWhatsAppWithOrder(orderData, savedItems, notesText);
         } else {
-            showOrderFinishedModal(orderData, savedItems, 'Mercado Pago');
+            // CHECKOUT MERCADO PAGO: Chama a função segura no Supabase
+            const btnMP = document.getElementById('btn-checkout-mercadopago');
+            if (btnMP) { btnMP.disabled = true; btnMP.textContent = 'Gerando Pagamento Seguro...'; }
+
+            try {
+                const { data: mpData, error: mpErr } = await window.supabaseClient.rpc('v2_create_mp_preference', {
+                    p_order_id: orderData.id
+                });
+
+                if (mpErr || !mpData || mpData.error || !mpData.init_point) {
+                    console.warn('Aviso Mercado Pago:', mpErr || mpData?.error);
+                    // Fallback transparente: se o Access Token ainda não foi colado, abre modal de confirmação
+                    showOrderFinishedModal(orderData, savedItems, 'Mercado Pago');
+                } else {
+                    // REDIRECIONA DIRETO PARA O CHECKOUT OFICIAL DO MERCADO PAGO
+                    window.location.href = mpData.init_point;
+                }
+            } catch (rpcErr) {
+                showOrderFinishedModal(orderData, savedItems, 'Mercado Pago');
+            }
         }
 
     } catch (err) {
-        console.error('Erro ao finalizar pedido:', err);
         alert('Erro ao registrar pedido: ' + err.message);
     }
 }
@@ -299,7 +305,7 @@ function sendWhatsAppWithOrder(order, items, notes) {
 
     msg += `\n----------------------------------------\n`;
     msg += `*VALOR TOTAL:* ${Number(order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\n`;
-    msg += `\nOlá! Acabei de gerar o pedido sob o ID *${order.order_code}* pelo site e gostaria de confirmar a produção e envio dos arquivos!`;
+    msg += `\nOlá! Acabei de gerar o pedido sob o ID *${order.order_code}* pelo site e gostaria de confirmar a produção!`;
 
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     showOrderFinishedModal(order, items, 'WhatsApp');
@@ -314,7 +320,6 @@ function showOrderFinishedModal(order, items, canal) {
         document.body.appendChild(modal);
     }
 
-    const isMP = canal === 'Mercado Pago';
     modal.innerHTML = `
         <div style="background:#fff; padding:35px; border-radius:16px; max-width:580px; width:90%; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.3);">
             <i class="fas fa-check-circle" style="font-size: 50px; color: #16a34a; margin-bottom: 12px;"></i>
@@ -323,9 +328,7 @@ function showOrderFinishedModal(order, items, canal) {
                 ${order.order_code}
             </div>
             <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 20px;">
-                ${isMP 
-                    ? 'Seu pedido foi registrado no sistema! Baixe o seu orçamento oficial com todas as peças e confirme a liberação via WhatsApp.' 
-                    : 'Seu pedido foi registrado e encaminhado para atendimento no WhatsApp.'}
+                Seu pedido foi registrado no sistema! Baixe o seu orçamento oficial com todas as peças e confirme a liberação via WhatsApp.
             </p>
             <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                 <button onclick="downloadNativeCartPDF('${order.id}')" style="background:#1e3a8a; color:#fff; border:none; padding:12px 20px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">
@@ -437,8 +440,8 @@ function showOrderFinishedModal(order, items, canal) {
                     </div>
 
                     <div style="border-top:1px solid #e2e8f0; padding-top:15px; font-size:11px; color:#64748b; text-align:center;">
-                        Documento OFICIAL emitido pela Vidal Design Solutions.<br>
-                        Mogi das Cruzes - SP | (11) 96864-9673 | (11) 94914-1803
+                        Documento oficial emitido pela Vidal Design Solutions.<br>
+                        Mogi das Cruzes - SP | (11) 96864-9673
                     </div>
                 </div>
             </body>
