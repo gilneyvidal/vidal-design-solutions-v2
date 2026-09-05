@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/products.js
-// OBJETIVO: Catálogo Conectado com Leitura Pública e Proteção de Preços
+// OBJETIVO: Catálogo com Acesso Livre de Preços para Equipe (Vendedor, Gerente, Master)
 // ==============================================================================
 
 let productsData = [];
@@ -42,23 +42,19 @@ async function loadProductsFromSupabase() {
     productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-600);"><i class="fas fa-spinner fa-spin"></i> Carregando produtos oficiais...</div>';
 
     try {
-        if (!window.supabaseClient) {
-            console.warn('Supabase Client não inicializado.');
-            return;
-        }
+        if (!window.supabaseClient) return;
 
-        // 1. Identifica o papel do usuário para precificação
         let userRole = 'guest';
         if (window.AuthController) {
             const user = await window.AuthController.getCurrentUser();
             if (user) {
                 const profile = await window.AuthController.getUserProfile(user.id);
-                if (profile && profile.status === 'aprovado') userRole = profile.role;
-                else if (profile && profile.role === 'master') userRole = 'master';
+                if (profile && (profile.status === 'aprovado' || profile.role === 'master' || profile.role === 'gerente' || profile.role === 'vendedor')) {
+                    userRole = profile.role;
+                }
             }
         }
 
-        // 2. Busca os produtos diretamente na tabela v2_products
         const { data: tableData, error: tableErr } = await window.supabaseClient
             .from('v2_products')
             .select('*')
@@ -82,10 +78,13 @@ async function loadProductsFromSupabase() {
                 const imagesArr = Array.isArray(p.images) && p.images.length > 0 ? p.images : ['assets/images/produtos/adesivo-branco.jpg'];
                 const cost = Number(p.base_cost) || 0;
 
-                // Regra Comercial da Ata 01:
+                // Preços para equipe (Gerente, Vendedor, Master) e clientes aprovados
                 let finalPrice = null;
-                if (userRole === 'revenda') finalPrice = cost * 1.5; // Custo + 50%
-                else if (userRole === 'cliente_final' || userRole === 'master') finalPrice = cost * 2.0; // Custo + 100%
+                if (userRole === 'revenda') {
+                    finalPrice = cost * 1.5;
+                } else if (['cliente_final', 'vendedor', 'gerente', 'master'].includes(userRole)) {
+                    finalPrice = cost * 2.0; // Tabela padrão de venda para pedidos comerciais
+                }
 
                 return {
                     id: p.id,
@@ -119,7 +118,7 @@ async function loadProductsFromSupabase() {
 
     } catch (err) {
         console.error('Erro ao carregar catálogo:', err);
-        productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">Erro ao carregar catálogo. Verifique sua conexão e recarregue.</div>';
+        productsGrid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: var(--gray-500);">Erro ao carregar catálogo. Recarregue a página.</div>';
     }
 }
 
@@ -255,7 +254,7 @@ function openModal(productId) {
                 <i class="fas fa-lock"></i> Preços Protegidos para Visitantes
             </p>
             <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">
-                Faça login ou cadastre-se para liberar sua tabela comercial e montar orçamentos.
+                Faça login ou cadastre-se no topo da página para liberar orçamentos e pedidos.
             </p>
             <div style="display: flex; gap: 10px; justify-content: center;">
                 <button class="btn btn-primary" onclick="closeModal(); window.AuthController.loginWithGoogle();">
