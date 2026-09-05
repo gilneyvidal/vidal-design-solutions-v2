@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/auth.js
-// OBJETIVO: Interface Visual de Autenticação, Status do Usuário e Modais LGPD
+// OBJETIVO: Barra Superior com Link para Minha Conta / Gerenciar Loja
 // ==============================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -16,15 +16,11 @@ async function initAuthUI() {
 
     try {
         if (!window.AuthController || !window.supabaseClient) {
-            console.warn('Supabase não inicializado. Renderizando botão de login.');
             renderGuestUI(userContainer);
             return;
         }
 
-        const userPromise = window.AuthController.getCurrentUser();
-        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 2500));
-        const user = await Promise.race([userPromise, timeoutPromise]);
-
+        const user = await window.AuthController.getCurrentUser();
         if (!user) {
             renderGuestUI(userContainer);
             return;
@@ -34,24 +30,24 @@ async function initAuthUI() {
         renderLoggedUI(userContainer, user, currentUserProfile);
 
     } catch (err) {
-        console.error('Erro na autenticação:', err);
         renderGuestUI(userContainer);
     }
 }
 
-// Interface quando não há usuário logado (Visitante)
 function renderGuestUI(container) {
     container.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="auth-buttons-group">
             <span class="auth-status-pill badge-guest">🔒 Preços Ocultos</span>
             <button id="btn-login-google" class="btn-google-login" onclick="window.AuthController.loginWithGoogle()">
                 <i class="fab fa-google" style="color: #ea4335; margin-right: 6px;"></i> Entrar com Google
+            </button>
+            <button class="btn-signup-direct" onclick="openRegisterModal()">
+                <i class="fas fa-user-plus"></i> Cadastre-se
             </button>
         </div>
     `;
 }
 
-// Interface quando há usuário logado
 function renderLoggedUI(container, user, profile) {
     const role = profile ? profile.role : 'cliente_final';
     const status = profile ? profile.status : 'pendente';
@@ -76,64 +72,19 @@ function renderLoggedUI(container, user, profile) {
         badgeText = '⛔ Bloqueado';
     }
 
+    const isInPages = window.location.pathname.includes('/pages/');
+    const accountUrl = isInPages ? 'minha-conta.html' : 'pages/minha-conta.html';
+    const adminUrl = isInPages ? 'admin.html' : 'pages/admin.html';
+
     container.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span>Olá, <strong>${userName}</strong></span>
             <span class="auth-status-pill ${badgeClass}">${badgeText}</span>
-            ${role === 'master' ? '<a href="pages/admin.html" class="btn-admin-pill">Gerenciar Loja</a>' : ''}
-            ${role !== 'master' && role !== 'revenda' ? '<button id="btn-solicitar-revenda" class="btn-revenda-pill" onclick="openResellerModal(\'' + user.id + '\')">Quero ser Revenda</button>' : ''}
+            <a href="${accountUrl}" class="btn-admin-pill" style="background:#0284c7;">
+                <i class="fas fa-user"></i> Minha Conta
+            </a>
+            ${role === 'master' ? `<a href="${adminUrl}" class="btn-admin-pill"><i class="fas fa-cog"></i> Gerenciar Loja</a>` : ''}
             <button id="btn-logout" class="btn-logout-pill" onclick="window.AuthController.logout()">Sair</button>
         </div>
     `;
-}
-
-// Modal de Comprovação de Revenda (LGPD)
-function openResellerModal(userId) {
-    let modal = document.getElementById('modal-revenda');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'modal-revenda';
-        modal.className = 'custom-modal';
-        document.body.appendChild(modal);
-    }
-
-    modal.innerHTML = `
-        <div class="modal-content-revenda">
-            <h3 style="margin-bottom: 10px; color: #111;">Solicitação de Perfil de Revenda</h3>
-            <p style="font-size: 13px; color: #555; margin-bottom: 15px;">Para liberar a tabela exclusiva de revenda (+50%), envie uma foto ou PDF demonstrando no mínimo <strong>3 clientes ativos</strong>.</p>
-            <form id="form-revenda">
-                <input type="file" id="revenda-doc" accept="image/*,.pdf" required style="width: 100%; margin-bottom: 15px;" />
-                <div style="font-size: 11px; color: #666; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
-                    🔒 <strong>Aviso LGPD:</strong> Seu documento é exclusivo para triagem manual do administrador. Após a decisão, ele é <strong>descartado permanentemente</strong> do servidor.
-                </div>
-                <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                    <button type="button" onclick="document.getElementById('modal-revenda').style.display='none'" style="background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Cancelar</button>
-                    <button type="submit" style="background: #16a34a; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer;">Enviar para Triagem</button>
-                </div>
-            </form>
-        </div>
-    `;
-
-    modal.style.display = 'flex';
-
-    document.getElementById('form-revenda').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const fileInput = document.getElementById('revenda-doc');
-        if (!fileInput.files.length) return;
-
-        const btn = e.target.querySelector('button[type="submit"]');
-        btn.disabled = true;
-        btn.textContent = 'Enviando...';
-
-        const res = await window.AuthController.submitResellerApplication(userId, fileInput.files[0]);
-        if (res.success) {
-            alert('Comprovante enviado com sucesso para triagem manual!');
-            modal.style.display = 'none';
-            window.location.reload();
-        } else {
-            alert('Erro no envio: ' + res.error);
-            btn.disabled = false;
-            btn.textContent = 'Enviar para Triagem';
-        }
-    });
 }
