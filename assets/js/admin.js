@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/admin.js
-// OBJETIVO: Gestão Master 100% Resiliente (Abas sempre ativas, Exclusões e Regras)
+// OBJETIVO: Gestão Master com Alteração Instantânea de Cargo e Status por Dropdown
 // ==============================================================================
 
 let currentMasterUser = null;
@@ -11,17 +11,14 @@ let allUsers = [];
 let allProducts = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Ativa imediatamente as abas e os botões para nunca travar a tela
     initTabNavigation();
     initAdminEventListeners();
 
-    // 2. Executa a verificação e o carregamento dos dados com proteção
     try {
         await verifyAdminAccess();
         await loadDashboardData();
     } catch (e) {
-        console.warn('Aviso durante carregamento:', e);
-        // Mesmo se houver aviso, força carregar dados básicos
+        console.warn('Carregando dados com fallback:', e);
         await loadDashboardData();
     }
 });
@@ -110,7 +107,7 @@ function renderOrdersTable(orders) {
         return;
     }
     tbody.innerHTML = '';
-    const isMaster = currentProfile?.role === 'master' || !currentProfile; // Fallback seguro
+    const isMaster = currentProfile?.role === 'master' || !currentProfile;
 
     orders.forEach(order => {
         const clientName = order.user?.full_name || 'Cliente';
@@ -380,7 +377,7 @@ window.updateOrderStatus = async function(orderId, newStatus) {
     } catch (err) { alert('Erro ao atualizar status.'); }
 };
 
-// 2. Triagem e Gestão de Usuários
+// 2. Gestão de Usuários (Alteração Instantânea por Dropdowns)
 async function loadUsersAndResellers() {
     const resellerTbody = document.getElementById('admin-resellers-tbody');
     const usersTbody = document.getElementById('admin-users-tbody');
@@ -424,41 +421,74 @@ function renderUsersTable(tbody, list) {
 
     list.forEach(u => {
         const tr = document.createElement('tr');
-        let roleBadgeColor = 'cliente_final';
-        if (u.role === 'revenda') roleBadgeColor = 'revenda';
-        else if (u.role === 'vendedor') roleBadgeColor = 'vendedor';
-        else if (u.role === 'gerente') roleBadgeColor = 'gerente';
-        else if (u.role === 'master') roleBadgeColor = 'master';
+        const isSelfMaster = u.role === 'master';
 
         tr.innerHTML = `
-            <td>${u.full_name || 'Sem nome'}</td>
+            <td><strong>${u.full_name || 'Sem nome'}</strong></td>
             <td>${u.email}</td>
-            <td><span class="role-badge ${roleBadgeColor}">${u.role.toUpperCase()}</span></td>
-            <td><strong>${u.status.toUpperCase()}</strong></td>
             <td>
-                ${(isMaster && u.role !== 'master') ? `
-                    <button class="btn-action-view" onclick="changeUserRolePrompt('${u.id}', '${u.role}')" style="padding:4px 8px; font-size:11px;">Alterar Cargo</button>
-                    <button class="btn-action-delete" onclick="deleteUserAccount('${u.id}', '${u.full_name || u.email}')" title="Excluir Usuário">✕</button>
-                ` : '<em>Acesso Protegido</em>'}
+                ${isSelfMaster ? '<span class="role-badge master">MASTER</span>' : `
+                    <select class="status-select" onchange="quickUpdateUserRole('${u.id}', this.value)">
+                        <option value="cliente_final" ${u.role === 'cliente_final' ? 'selected' : ''}>Cliente Final</option>
+                        <option value="revenda" ${u.role === 'revenda' ? 'selected' : ''}>Revenda (50%)</option>
+                        <option value="vendedor" ${u.role === 'vendedor' ? 'selected' : ''}>Vendedor / Produção</option>
+                        <option value="gerente" ${u.role === 'gerente' ? 'selected' : ''}>Gerente</option>
+                    </select>
+                `}
+            </td>
+            <td>
+                ${isSelfMaster ? '<span style="color:#16a34a; font-weight:bold;">APROVADO</span>' : `
+                    <select class="status-select" onchange="quickUpdateUserStatus('${u.id}', this.value)">
+                        <option value="aprovado" ${u.status === 'aprovado' ? 'selected' : ''}>Aprovado</option>
+                        <option value="pendente" ${u.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                        <option value="bloqueado" ${u.status === 'bloqueado' ? 'selected' : ''}>Bloqueado</option>
+                    </select>
+                `}
+            </td>
+            <td>
+                ${(!isSelfMaster && isMaster) ? `
+                    <button class="btn-action-delete" onclick="deleteUserAccount('${u.id}', '${u.full_name || u.email}')" title="Excluir Usuário">✕ Excluir</button>
+                ` : '<em>Protegido</em>'}
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-window.openNewUserModal = function() { document.getElementById('modal-new-user').style.display = 'flex'; };
+// Alteração Instantânea de Cargo
+window.quickUpdateUserRole = async function(userId, newRole) {
+    try {
+        const { error } = await window.supabaseClient.from('v2_profiles').update({
+            role: newRole,
+            requested_role: newRole,
+            updated_at: new Date().toISOString()
+        }).eq('id', userId);
 
-window.changeUserRolePrompt = async function(userId, currentRole) {
-    const newRole = prompt(`Digite o novo cargo:\n- cliente_final\n- revenda\n- vendedor\n- gerente`, currentRole);
-    if (!newRole || newRole === currentRole) return;
-    if (!['cliente_final', 'revenda', 'vendedor', 'gerente'].includes(newRole)) {
-        alert('Cargo inválido.');
-        return;
+        if (error) throw error;
+        alert('Cargo atualizado com sucesso no banco!');
+        await loadUsersAndResellers();
+    } catch (err) {
+        alert('Erro ao atualizar cargo: ' + err.message);
     }
-    await window.supabaseClient.from('v2_profiles').update({ role: newRole, requested_role: newRole }).eq('id', userId);
-    alert('Cargo atualizado!');
-    await loadUsersAndResellers();
 };
+
+// Alteração Instantânea de Status
+window.quickUpdateUserStatus = async function(userId, newStatus) {
+    try {
+        const { error } = await window.supabaseClient.from('v2_profiles').update({
+            status: newStatus,
+            updated_at: new Date().toISOString()
+        }).eq('id', userId);
+
+        if (error) throw error;
+        alert(`Status alterado para ${newStatus.toUpperCase()}!`);
+        await loadUsersAndResellers();
+    } catch (err) {
+        alert('Erro ao atualizar status: ' + err.message);
+    }
+};
+
+window.openNewUserModal = function() { document.getElementById('modal-new-user').style.display = 'flex'; };
 
 window.deleteUserAccount = async function(userId, userName) {
     if (!confirm(`Deseja realmente EXCLUIR o usuário "${userName}"?`)) return;
