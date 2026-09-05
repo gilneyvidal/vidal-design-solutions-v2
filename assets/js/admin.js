@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/admin.js
-// OBJETIVO: Gestão Master sem Exposição de Margens e Correção de Cargos de Equipe
+// OBJETIVO: Gestão Master: Triagem Unificada de Todos os Leads e Gravação Garantida
 // ==============================================================================
 
 let currentMasterUser = null;
@@ -182,6 +182,11 @@ window.viewOrderDetails = function(orderId) {
         addressHTML = `Entrega: ${a.rua || ''}, ${a.numero || ''} - ${a.bairro || ''} (${a.cidade || ''})`;
     }
 
+    let artDownloadHTML = '<span style="color:#64748b;">Arte será enviada via WhatsApp</span>';
+    if (order.pdf_url) {
+        artDownloadHTML = `<a href="${order.pdf_url}" target="_blank" style="background:#16a34a; color:#fff; padding:6px 12px; border-radius:4px; text-decoration:none; font-weight:bold; font-size:12px;"><i class="fas fa-download"></i> Baixar Arquivo de Arte do Cliente</a>`;
+    }
+
     container.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f97316; padding-bottom: 15px; margin-bottom: 20px;">
             <div>
@@ -195,11 +200,12 @@ window.viewOrderDetails = function(orderId) {
             <div>
                 <strong>Cliente:</strong> ${clientName}<br>
                 <strong>E-mail:</strong> ${clientEmail}<br>
-                <strong>Telefone:</strong> ${clientPhone}
+                <strong>Telefone:</strong> ${clientPhone}<br>
+                <div style="margin-top:8px;"><strong>Arquivo de Produção:</strong><br>${artDownloadHTML}</div>
             </div>
             <div>
                 <strong>Forma de Recebimento:</strong> ${addressHTML}<br>
-                <strong>Canal:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
+                <strong>Canal de Fechamento:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
                 <strong>Status Atual:</strong> <strong style="color: #ea580c;">${order.status.toUpperCase()}</strong>
             </div>
         </div>
@@ -377,7 +383,7 @@ window.updateOrderStatus = async function(orderId, newStatus) {
     } catch (err) { alert('Erro ao atualizar status.'); }
 };
 
-// 2. Gestão de Usuários (Correção da Trava e Dropdowns Diretos)
+// 2. Triagem Unificada (Mostra TODOS os usuários e leads pendentes)
 async function loadUsersAndResellers() {
     const resellerTbody = document.getElementById('admin-resellers-tbody');
     const usersTbody = document.getElementById('admin-users-tbody');
@@ -385,34 +391,73 @@ async function loadUsersAndResellers() {
         const { data, error } = await window.supabaseClient.from('v2_profiles').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         allUsers = data || [];
-        const pendingResellers = allUsers.filter(u => u.requested_role === 'revenda' && u.status === 'pendente');
-        renderResellersTable(resellerTbody, pendingResellers);
+
+        // MOSTRA TODOS QUE ESTÃO PENDENTES (Tanto Revenda quanto Cliente Final)
+        const allPending = allUsers.filter(u => u.status === 'pendente');
+        renderPendingLeadsTable(resellerTbody, allPending);
         renderUsersTable(usersTbody, allUsers);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error('Erro ao carregar usuários:', err); }
 }
 
-function renderResellersTable(tbody, list) {
+function renderPendingLeadsTable(tbody, list) {
     if (!tbody) return;
     if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#64748b;">Nenhuma solicitação de revenda pendente.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#64748b;">Nenhum cadastro ou solicitação pendente no momento.</td></tr>';
         return;
     }
+
     tbody.innerHTML = '';
     list.forEach(user => {
+        const isRevenda = user.requested_role === 'revenda';
+        const modalidadeSolicitada = isRevenda ? '⭐ Revenda Solicitada' : 'Cliente Final';
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${user.full_name || 'Sem nome'}</strong></td>
             <td>${user.email}</td>
-            <td>${user.phone || 'Não informado'}</td>
-            <td><small>${user.notes || 'Comprovante anexado'}</small></td>
+            <td>${user.phone || 'Não informado'}<br><small style="color:#64748b;">${user.address?.cidade || ''}</small></td>
             <td>
-                <button class="btn-approve" onclick="decisionReseller('${user.id}', true)">✓ Aprovar Revenda</button>
-                <button class="btn-reject" onclick="decisionReseller('${user.id}', false)">✕ Converter em Cliente Final</button>
+                <span class="role-badge ${isRevenda ? 'revenda' : 'cliente_final'}">${modalidadeSolicitada}</span><br>
+                <small>${user.notes || 'Aguardando aprovação'}</small>
+            </td>
+            <td>
+                <button class="btn-approve" onclick="approveLeadAs('${user.id}', 'revenda')">✓ Aprovar Revenda</button>
+                <button class="btn-action-view" onclick="approveLeadAs('${user.id}', 'cliente_final')" style="background:#0284c7; padding:6px 10px; font-size:12px; margin-left:4px;">✓ Aprovar Cliente Final</button>
+                <button class="btn-reject" onclick="deleteUserAccount('${user.id}', '${user.full_name || user.email}')" style="margin-left:4px;">✕</button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
+
+window.approveLeadAs = async function(userId, targetRole) {
+    const roleName = targetRole === 'revenda' ? 'REVENDA AUTORIZADA' : 'CLIENTE FINAL';
+    if (!confirm(`Confirma aprovar este usuário como ${roleName}?`)) return;
+
+    try {
+        const { error } = await window.supabaseClient.from('v2_profiles').update({
+            role: targetRole,
+            status: 'aprovado',
+            requested_role: targetRole,
+            updated_at: new Date().toISOString()
+        }).eq('id', userId);
+
+        if (error) throw error;
+
+        // Se tiver comprovante e foi aprovado, descarta do bucket conforme LGPD
+        try {
+            const { data: files } = await window.supabaseClient.storage.from('reseller-proofs').list('solicitacoes');
+            const userFiles = files?.filter(f => f.name.startsWith(userId)) || [];
+            for (let f of userFiles) {
+                await window.supabaseClient.storage.from('reseller-proofs').remove([`solicitacoes/${f.name}`]);
+            }
+        } catch (e) {}
+
+        alert(`Usuário aprovado com sucesso como ${roleName}!`);
+        await loadUsersAndResellers();
+    } catch (err) {
+        alert('Erro ao aprovar: ' + err.message);
+    }
+};
 
 function renderUsersTable(tbody, list) {
     if (!tbody) return;
@@ -455,7 +500,6 @@ function renderUsersTable(tbody, list) {
     });
 }
 
-// Atualiza exclusivamente o cargo funcional (role), sem violar a constraint antiga
 window.quickUpdateUserRole = async function(userId, newRole) {
     try {
         const { error } = await window.supabaseClient.from('v2_profiles').update({
@@ -492,29 +536,7 @@ window.deleteUserAccount = async function(userId, userName) {
     if (!confirm(`Deseja realmente EXCLUIR o usuário "${userName}"?`)) return;
     try {
         await window.supabaseClient.from('v2_profiles').delete().eq('id', userId);
-        alert('Usuário excluído!');
-        await loadUsersAndResellers();
-    } catch (err) { alert('Erro: ' + err.message); }
-};
-
-window.decisionReseller = async function(userId, approved) {
-    if (!confirm(`Confirma a decisão? O comprovante será excluído (LGPD).`)) return;
-    try {
-        const newRole = approved ? 'revenda' : 'cliente_final';
-        await window.supabaseClient.from('v2_profiles').update({
-            role: newRole,
-            status: 'aprovado',
-            requested_role: newRole,
-            notes: `Triagem: ${approved ? 'Revenda Aprovada' : 'Cliente Final'}`
-        }).eq('id', userId);
-
-        try {
-            const { data: files } = await window.supabaseClient.storage.from('reseller-proofs').list('solicitacoes');
-            const userFile = files?.find(f => f.name.startsWith(userId));
-            if (userFile) await window.supabaseClient.storage.from('reseller-proofs').remove([`solicitacoes/${userFile.name}`]);
-        } catch (e) {}
-
-        alert('Decisão gravada!');
+        alert('Usuário excluído com sucesso!');
         await loadUsersAndResellers();
     } catch (err) { alert('Erro: ' + err.message); }
 };
@@ -724,6 +746,7 @@ function initAdminEventListeners() {
 
     document.getElementById('form-global-settings')?.addEventListener('submit', saveGlobalSettings);
 
+    // Salva no banco com tratamento de erro e ID único
     document.getElementById('form-create-user-manual')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('user-new-name').value;
@@ -733,7 +756,7 @@ function initAdminEventListeners() {
         const status = document.getElementById('user-new-status').value;
 
         try {
-            await window.supabaseClient.from('v2_profiles').insert({
+            const { error } = await window.supabaseClient.from('v2_profiles').insert({
                 id: crypto.randomUUID(),
                 email: email,
                 full_name: name,
@@ -742,10 +765,16 @@ function initAdminEventListeners() {
                 status: status,
                 requested_role: role
             });
-            alert('Membro cadastrado com sucesso! Quando ele logar com o Google deste e-mail, o sistema reconhecerá o cargo automaticamente.');
+
+            if (error) throw error;
+
+            alert('Usuário cadastrado com sucesso no banco!');
             document.getElementById('modal-new-user').style.display = 'none';
+            document.getElementById('form-create-user-manual').reset();
             await loadUsersAndResellers();
-        } catch (err) { alert('Erro: ' + err.message); }
+        } catch (err) {
+            alert('Erro ao cadastrar usuário: ' + err.message);
+        }
     });
 
     document.getElementById('new-prod-cost')?.addEventListener('input', (e) => {
