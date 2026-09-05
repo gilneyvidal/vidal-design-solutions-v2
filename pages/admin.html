@@ -19,8 +19,6 @@
         
         .admin-sidebar { background: #0f172a; color: #fff; padding: 25px 0; }
         .admin-sidebar-header { padding: 0 25px 25px; border-bottom: 1px solid #1e293b; text-align: center; }
-        
-        /* LOGO BRANCO PARA FUNDO ESCURO */
         .admin-logo-img { max-width: 190px; height: auto; max-height: 60px; object-fit: contain; margin-bottom: 8px; }
         .admin-sidebar-header small { color: #f97316; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
         
@@ -106,7 +104,6 @@
     <div class="admin-layout">
         <aside class="admin-sidebar">
             <div class="admin-sidebar-header">
-                <!-- Logotipo Branco Oficial -->
                 <img src="../logo.png" alt="Vidal Design Solutions" class="admin-logo-img">
                 <small>Gestão Central V2</small>
             </div>
@@ -125,7 +122,6 @@
         <main class="admin-main">
             <div class="admin-header-bar">
                 <h1 style="margin: 0; font-size: 24px; color: #0f172a;">Painel Administrativo</h1>
-                <!-- Elementos de Nome e Cargo Corretos -->
                 <span>Logado como: <strong id="admin-user-name">Gilney Vidal</strong> (<span id="admin-user-role" style="font-weight: bold; color: #f97316;">MASTER</span>)</span>
             </div>
 
@@ -285,12 +281,12 @@
                 </table>
             </section>
 
-            <!-- SEÇÃO 4: USUÁRIOS -->
+            <!-- SEÇÃO 4: USUÁRIOS COM DROPDOWNS DIRETOS -->
             <section id="sec-usuarios" class="admin-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <div>
                         <h2 style="margin: 0 0 5px 0;">Gestão de Acessos e Usuários</h2>
-                        <p style="margin: 0; color: #64748b; font-size: 13px;">Controle permissões para clientes, revendedores, vendedores e gerentes.</p>
+                        <p style="margin: 0; color: #64748b; font-size: 13px;">Altere o cargo ou status de qualquer usuário diretamente na tabela.</p>
                     </div>
                     <button onclick="openNewUserModal()" style="background: #f97316; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">
                         <i class="fas fa-user-plus"></i> + Novo Usuário / Equipe
@@ -301,9 +297,9 @@
                         <tr>
                             <th>Nome</th>
                             <th>E-mail</th>
-                            <th>Cargo / Modalidade</th>
-                            <th>Status do Acesso</th>
-                            <th>Ações Administrativas</th>
+                            <th>Cargo / Nível de Acesso</th>
+                            <th>Status de Liberação</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody id="admin-users-tbody"></tbody>
@@ -350,7 +346,7 @@
         <div class="modal-inspect-box" id="modal-order-inspect-body"></div>
     </div>
 
-    <!-- Modal Novo Usuário / Funcionário -->
+    <!-- Modal Novo Usuário -->
     <div id="modal-new-user" class="modal-inspect-overlay">
         <div class="modal-inspect-box" style="max-width: 500px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -362,7 +358,7 @@
             </p>
             <form id="form-create-user-manual">
                 <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">Nome Completo:</label>
-                <input type="text" id="user-new-name" placeholder="Ex: Roberto Silva" required style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                <input type="text" id="user-new-name" placeholder="Ex: Elisete Vidal" required style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
                 
                 <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">E-mail do Google:</label>
                 <input type="email" id="user-new-email" placeholder="usuario@gmail.com" required style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
