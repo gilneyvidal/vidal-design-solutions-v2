@@ -7,22 +7,26 @@
     
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/responsive.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Supabase CDN e HTML2PDF para Emissão de PDF no Painel -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
-        body { background: #f4f6f9; color: #1e293b; margin: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-        .admin-layout { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+        body { background: #f8fafc; color: #1e293b; margin: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        .admin-layout { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
         @media (max-width: 900px) { .admin-layout { grid-template-columns: 1fr; } }
         
         .admin-sidebar { background: #0f172a; color: #fff; padding: 25px 0; }
-        .admin-sidebar-header { padding: 0 25px 25px; border-bottom: 1px solid #1e293b; }
-        .admin-sidebar-header h2 { margin: 0; font-size: 20px; color: #f97316; font-weight: 800; }
+        .admin-sidebar-header { padding: 0 25px 25px; border-bottom: 1px solid #1e293b; text-align: center; }
+        .admin-logo-img { max-width: 190px; height: auto; max-height: 55px; object-fit: contain; margin-bottom: 8px; }
+        .admin-sidebar-header small { color: #f97316; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+        
         .admin-nav { list-style: none; padding: 0; margin: 25px 0; }
-        .admin-nav-item { display: block; padding: 14px 25px; color: #94a3b8; text-decoration: none; cursor: pointer; transition: all 0.2s; font-weight: 600; font-size: 14px; }
+        .admin-nav-item { display: flex; align-items: center; gap: 10px; padding: 14px 25px; color: #94a3b8; text-decoration: none; cursor: pointer; transition: all 0.2s; font-weight: 600; font-size: 14px; }
         .admin-nav-item:hover, .admin-nav-item.active { background: #f97316; color: #ffffff; }
+        .admin-nav-link-store { display: flex; align-items: center; gap: 10px; padding: 14px 25px; color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 14px; border-top: 1px solid #1e293b; margin-top: 15px; }
+        .admin-nav-link-store:hover { color: #fff; background: rgba(56, 189, 248, 0.15); }
         
         .admin-main { padding: 35px; }
         .admin-header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
@@ -39,13 +43,13 @@
         .role-badge.master { background: #f3e5f5; color: #7b1fa2; }
         
         .status-select { padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 13px; }
-        .btn-approve { background: #16a34a; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-reject { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-edit { background: #0284c7; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        
-        .variables-grid {
+        .btn-action-view { background: #0284c7; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .btn-action-delete { background: #ef4444; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; margin-left: 4px; }
+        .btn-action-delete:hover { background: #b91c1c; }
+
+        .variables-grid-complete {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 15px;
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -55,7 +59,7 @@
         }
         .var-group-title {
             font-weight: 800;
-            font-size: 13px;
+            font-size: 12px;
             color: #0f172a;
             margin-bottom: 10px;
             text-transform: uppercase;
@@ -84,7 +88,7 @@
         .modal-inspect-box {
             background: #ffffff;
             border-radius: 12px;
-            max-width: 750px;
+            max-width: 820px;
             width: 92%;
             padding: 30px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
@@ -99,23 +103,27 @@
     <div class="admin-layout">
         <aside class="admin-sidebar">
             <div class="admin-sidebar-header">
-                <h2>VIDAL MASTER</h2>
-                <small style="color: #94a3b8;">Gestão Central V2</small>
+                <!-- Logotipo Oficial na Barra Lateral -->
+                <img src="../logo_cabecalho.png" alt="Vidal Design Solutions" class="admin-logo-img" onerror="this.src='../logo.png'">
+                <small>Gestão Central V2</small>
             </div>
             <ul class="admin-nav">
-                <li><a class="admin-nav-item active" data-target="sec-pedidos">📦 Pedidos & Operação</a></li>
-                <li><a class="admin-nav-item" data-target="sec-revendas">⭐ Triagem de Revendas</a></li>
-                <li><a class="admin-nav-item" data-target="sec-produtos">🎨 Catálogo & Variáveis</a></li>
-                <li><a class="admin-nav-item" data-target="sec-usuarios">👥 Todos os Usuários</a></li>
-                <li><a class="admin-nav-item" data-target="sec-config">⚙️ Regras Globais</a></li>
-                <li><a href="../index.html" class="admin-nav-item">🌐 Ver Loja Pública</a></li>
+                <li><a class="admin-nav-item active" data-target="sec-pedidos"><i class="fas fa-box"></i> Pedidos & Operação</a></li>
+                <li><a class="admin-nav-item" data-target="sec-revendas"><i class="fas fa-star"></i> Triagem de Revendas</a></li>
+                <li><a class="admin-nav-item" data-target="sec-produtos"><i class="fas fa-tags"></i> Catálogo & Variáveis</a></li>
+                <li><a class="admin-nav-item" data-target="sec-usuarios"><i class="fas fa-users"></i> Gestão de Usuários</a></li>
+                <li><a class="admin-nav-item" data-target="sec-config"><i class="fas fa-cog"></i> Regras Globais</a></li>
             </ul>
+            <!-- Link corrigido para abrir a loja pública -->
+            <a href="../index.html" target="_blank" class="admin-nav-link-store">
+                <i class="fas fa-external-link-alt"></i> Ver Loja Pública
+            </a>
         </aside>
 
         <main class="admin-main">
             <div class="admin-header-bar">
-                <h1>Painel Master de Administração</h1>
-                <span>Administrador Master: <strong id="admin-user-name">Gilney Vidal</strong></span>
+                <h1 style="margin: 0; font-size: 24px; color: #0f172a;">Painel Master de Administração</h1>
+                <span>Master: <strong id="admin-user-name">Gilney Vidal</strong></span>
             </div>
 
             <!-- SEÇÃO 1: PEDIDOS -->
@@ -144,7 +152,7 @@
             <section id="sec-revendas" class="admin-section">
                 <h2>Solicitações de Revenda (Triagem Manual)</h2>
                 <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
-                    Aprove ou reprove. Conforme a LGPD, o comprovante é <strong>descartado imediatamente</strong> após a decisão.
+                    Aprove ou reprove. Conforme a LGPD, o comprovante é <strong>descartado imediatamente</strong> após a sua decisão.
                 </p>
                 <table class="admin-table">
                     <thead>
@@ -164,7 +172,7 @@
             <section id="sec-produtos" class="admin-section">
                 <h2>Cadastro & Gestão Completa de Produtos</h2>
                 <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
-                    Cadastre o <strong>Preço de Custo</strong> e ative as variáveis gráficas específicas da peça.
+                    Cadastre o <strong>Preço de Custo</strong>, selecione todas as características gráficas de fornecedor e gerencie o catálogo.
                 </p>
 
                 <form id="form-new-product" style="background: #ffffff; border: 1px solid #e2e8f0; padding: 25px; border-radius: 10px; margin-bottom: 35px;">
@@ -191,7 +199,7 @@
                                 <option value="pack">Por Pacote / Lote</option>
                             </select>
 
-                            <label style="font-weight: 700; font-size: 13px;">Prazo de Produção do Fornecedor (dias úteis):</label>
+                            <label style="font-weight: 700; font-size: 13px;">Prazo do Fornecedor (dias úteis):</label>
                             <input type="number" id="new-prod-days" name="production_days" value="2" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin: 6px 0 15px;">
                         </div>
 
@@ -202,32 +210,40 @@
                             <input type="text" id="new-prod-img3" name="img_3" placeholder="Foto 3" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 6px;">
                             <input type="text" id="new-prod-img4" name="img_4" placeholder="Foto 4" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 12px;">
 
-                            <label style="font-weight: 700; font-size: 13px;">Descrição do Produto:</label>
+                            <label style="font-weight: 700; font-size: 13px;">Descrição Técnica:</label>
                             <textarea id="new-prod-desc" name="description" style="width: 100%; height: 80px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px;"></textarea>
                         </div>
                     </div>
 
-                    <!-- Todas as Variáveis Gráficas -->
-                    <h4 style="margin: 20px 0 10px; color: #0f172a; font-size: 14px;">⚙️ Atributos Gráficos Ativos deste Produto:</h4>
-                    <div class="variables-grid">
+                    <!-- Mapeamento Completo de Variáveis Gráficas -->
+                    <h4 style="margin: 20px 0 10px; color: #0f172a; font-size: 14px;"><i class="fas fa-sliders-h"></i> Atributos e Variáveis Gráficas Ativas:</h4>
+                    <div class="variables-grid-complete">
                         <div>
-                            <div class="var-group-title">Medidas & Formatos</div>
+                            <div class="var-group-title">Medidas & Dimensões</div>
                             <label class="var-checkbox-label"><input type="checkbox" name="var_sqm_calc" checked> Largura x Altura (cm)</label>
                             <label class="var-checkbox-label"><input type="checkbox" name="var_min_sqm" checked> Trava de 0,5 m² Mínimo</label>
                             <label class="var-checkbox-label"><input type="checkbox" name="var_format_fixed"> Formatos Fixos (A3, A4, 88x48mm)</label>
                         </div>
                         <div>
-                            <div class="var-group-title">Substratos & Materiais</div>
+                            <div class="var-group-title">Substratos de Impressão</div>
                             <label class="var-checkbox-label"><input type="checkbox" name="var_mat_adesivo" checked> Vinil Adesivo (Brilho/Fosco)</label>
-                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_lona" checked> Lona Frontlight 440g</label>
-                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_papeis"> Papéis Couchê (90g, 150g, 300g)</label>
-                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_rigidos"> Rígidos (ACM, Acrílico, PVC, MDF)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_lona" checked> Lona Frontlight 440g / Backlight</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_papeis"> Papéis Couchê (90g, 150g, 250g, 300g)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_rigidos"> Rígidos (ACM 3mm, Acrílico, PVC, MDF)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_mat_dtf"> Cartela DTF UV com Alto Relevo</label>
+                        </div>
+                        <div>
+                            <div class="var-group-title">Cores & Impressão</div>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_cor_4x0" checked> 4x0 (Frente Colorida)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_cor_4x4" checked> 4x4 (Frente e Verso Coloridos)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_cor_1x0"> 1x0 (Preto e Branco)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_cor_uv"> Impressão Digital UV Alta Definição</label>
                         </div>
                         <div>
                             <div class="var-group-title">Acabamentos & Processos</div>
-                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_laminacao" checked> Laminação (Fosca / Brilho)</label>
-                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_verniz"> Verniz Localizado</label>
-                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_ilhos" checked> Ilhós e Reforço / Bainha</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_laminacao" checked> Laminação (Fosca / Brilho BOPP)</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_verniz"> Verniz Localizado com Reserva</label>
+                            <label class="var-checkbox-label"><input type="checkbox" name="var_acab_ilhos" checked> Ilhós e Reforço Soldado</label>
                             <label class="var-checkbox-label"><input type="checkbox" name="var_acab_laser"> Corte Especial a Laser / Recorte</label>
                             <label class="var-checkbox-label"><input type="checkbox" name="var_acab_dobra"> Dobra / Vinco / Serrilha</label>
                         </div>
@@ -249,7 +265,7 @@
                     </button>
                 </form>
 
-                <h3>Produtos Existentes</h3>
+                <h3>Produtos Existentes no Catálogo</h3>
                 <table class="admin-table">
                     <thead>
                         <tr>
@@ -266,9 +282,14 @@
                 </table>
             </section>
 
-            <!-- SEÇÃO 4: USUÁRIOS -->
+            <!-- SEÇÃO 4: USUÁRIOS (COM CRIAÇÃO E EXCLUSÃO) -->
             <section id="sec-usuarios" class="admin-section">
-                <h2>Base Completa de Usuários</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>Gerenciamento de Usuários</h2>
+                    <button onclick="openNewUserModal()" style="background: #f97316; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        <i class="fas fa-user-plus"></i> + Novo Usuário
+                    </button>
+                </div>
                 <table class="admin-table">
                     <thead>
                         <tr>
@@ -283,39 +304,67 @@
                 </table>
             </section>
 
-            <!-- SEÇÃO 5: CONFIGURAÇÕES GLOBAIS -->
+            <!-- SEÇÃO 5: CONFIGURAÇÕES GLOBAIS (COM BOTÃO SALVAR FUNCIONAL) -->
             <section id="sec-config" class="admin-section">
                 <h2>Regras Globais do E-commerce</h2>
-                <div style="max-width: 500px; margin-top: 20px;">
+                <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
+                    Altere os parâmetros e clique em salvar para atualizar as regras do sistema no banco.
+                </p>
+                <form id="form-global-settings" style="max-width: 550px;">
                     <div style="margin-bottom: 15px;">
-                        <label style="font-weight: 700; display: block;">Margem Padrão de Revenda (%):</label>
-                        <input type="number" id="cfg-reseller-margin" value="50" disabled style="width: 100%; padding: 8px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <label style="font-weight: 700; display: block; margin-bottom: 5px;">Margem Padrão de Revenda (%):</label>
+                        <input type="number" id="cfg-reseller-margin" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <label style="font-weight: 700; display: block;">Margem Padrão de Cliente Final (%):</label>
-                        <input type="number" id="cfg-retail-margin" value="100" disabled style="width: 100%; padding: 8px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <label style="font-weight: 700; display: block; margin-bottom: 5px;">Margem Padrão de Cliente Final (%):</label>
+                        <input type="number" id="cfg-retail-margin" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <label style="font-weight: 700; display: block;">Taxa de Criação de Arte (R$):</label>
-                        <input type="number" id="cfg-art-fee" value="40" disabled style="width: 100%; padding: 8px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <label style="font-weight: 700; display: block; margin-bottom: 5px;">Taxa de Criação de Arte (R$):</label>
+                        <input type="number" step="0.01" id="cfg-art-fee" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <label style="font-weight: 700; display: block;">Área Mínima Cobrada (m²):</label>
-                        <input type="number" id="cfg-min-area" value="0.5" disabled style="width: 100%; padding: 8px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <label style="font-weight: 700; display: block; margin-bottom: 5px;">Área Mínima Cobrada (m²):</label>
+                        <input type="number" step="0.1" id="cfg-min-area" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
-                    <div style="margin-bottom: 15px;">
-                        <label style="font-weight: 700; display: block;">WhatsApp de Fechamento:</label>
-                        <input type="text" id="cfg-whatsapp" value="+5511949141803" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="font-weight: 700; display: block; margin-bottom: 5px;">WhatsApp para Recebimento de Pedidos:</label>
+                        <input type="text" id="cfg-whatsapp" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
-                </div>
+                    <button type="submit" style="background: #16a34a; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                        <i class="fas fa-save"></i> Salvar Regras Globais
+                    </button>
+                </form>
             </section>
         </main>
     </div>
 
     <!-- Modal Ficha Completa do Pedido -->
     <div id="modal-order-inspect" class="modal-inspect-overlay">
-        <div class="modal-inspect-box" id="modal-order-inspect-body">
-            <!-- Renderizado dinamicamente pelo admin.js ao clicar em Ver -->
+        <div class="modal-inspect-box" id="modal-order-inspect-body"></div>
+    </div>
+
+    <!-- Modal Novo Usuário Manual -->
+    <div id="modal-new-user" class="modal-inspect-overlay">
+        <div class="modal-inspect-box" style="max-width: 480px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">Novo Usuário no Sistema</h3>
+                <button onclick="document.getElementById('modal-new-user').style.display='none'" style="background:none; border:none; font-size:18px; cursor:pointer;">✕</button>
+            </div>
+            <form id="form-create-user-manual">
+                <input type="text" id="user-new-name" placeholder="Nome Completo" required style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                <input type="email" id="user-new-email" placeholder="E-mail" required style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                <input type="text" id="user-new-phone" placeholder="Telefone / WhatsApp" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                <select id="user-new-role" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <option value="cliente_final">Cliente Final</option>
+                    <option value="revenda">Revenda Autorizada (50%)</option>
+                </select>
+                <select id="user-new-status" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <option value="aprovado">Aprovado Imediato</option>
+                    <option value="pendente">Pendente de Triagem</option>
+                </select>
+                <button type="submit" style="width: 100%; background: #16a34a; color: #fff; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">Cadastrar Usuário</button>
+            </form>
         </div>
     </div>
 
