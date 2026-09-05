@@ -19,7 +19,9 @@
         
         .admin-sidebar { background: #0f172a; color: #fff; padding: 25px 0; }
         .admin-sidebar-header { padding: 0 25px 25px; border-bottom: 1px solid #1e293b; text-align: center; }
-        .admin-logo-img { max-width: 190px; height: auto; max-height: 55px; object-fit: contain; margin-bottom: 8px; }
+        
+        /* LOGO OFICIAL BRANCO PARA FUNDO ESCURO */
+        .admin-logo-img { max-width: 190px; height: auto; max-height: 60px; object-fit: contain; margin-bottom: 8px; }
         .admin-sidebar-header small { color: #f97316; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
         
         .admin-nav { list-style: none; padding: 0; margin: 25px 0; }
@@ -40,6 +42,8 @@
         .role-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .role-badge.revenda { background: #e8f5e9; color: #2e7d32; }
         .role-badge.cliente_final { background: #e3f2fd; color: #1565c0; }
+        .role-badge.vendedor { background: #e0f2fe; color: #0284c7; }
+        .role-badge.gerente { background: #fef3c7; color: #d97706; }
         .role-badge.master { background: #f3e5f5; color: #7b1fa2; }
         
         .status-select { padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 13px; }
@@ -74,7 +78,6 @@
             color: #334155;
         }
 
-        /* Modal Ficha Completa do Pedido */
         .modal-inspect-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -103,18 +106,17 @@
     <div class="admin-layout">
         <aside class="admin-sidebar">
             <div class="admin-sidebar-header">
-                <!-- Logotipo Oficial na Barra Lateral -->
-                <img src="../logo_cabecalho.png" alt="Vidal Design Solutions" class="admin-logo-img" onerror="this.src='../logo.png'">
+                <!-- Logotipo Branco Oficial para o Fundo Escuro -->
+                <img src="../logo.png" alt="Vidal Design Solutions" class="admin-logo-img">
                 <small>Gestão Central V2</small>
             </div>
             <ul class="admin-nav">
-                <li><a class="admin-nav-item active" data-target="sec-pedidos"><i class="fas fa-box"></i> Pedidos & Operação</a></li>
-                <li><a class="admin-nav-item" data-target="sec-revendas"><i class="fas fa-star"></i> Triagem de Revendas</a></li>
-                <li><a class="admin-nav-item" data-target="sec-produtos"><i class="fas fa-tags"></i> Catálogo & Variáveis</a></li>
-                <li><a class="admin-nav-item" data-target="sec-usuarios"><i class="fas fa-users"></i> Gestão de Usuários</a></li>
-                <li><a class="admin-nav-item" data-target="sec-config"><i class="fas fa-cog"></i> Regras Globais</a></li>
+                <li id="menu-pedidos"><a class="admin-nav-item active" data-target="sec-pedidos"><i class="fas fa-box"></i> Pedidos & Operação</a></li>
+                <li id="menu-revendas"><a class="admin-nav-item" data-target="sec-revendas"><i class="fas fa-star"></i> Triagem de Revendas</a></li>
+                <li id="menu-produtos"><a class="admin-nav-item" data-target="sec-produtos"><i class="fas fa-tags"></i> Catálogo & Variáveis</a></li>
+                <li id="menu-usuarios"><a class="admin-nav-item" data-target="sec-usuarios"><i class="fas fa-users"></i> Gestão de Usuários</a></li>
+                <li id="menu-config"><a class="admin-nav-item" data-target="sec-config"><i class="fas fa-cog"></i> Regras Globais</a></li>
             </ul>
-            <!-- Link corrigido para abrir a loja pública -->
             <a href="../index.html" target="_blank" class="admin-nav-link-store">
                 <i class="fas fa-external-link-alt"></i> Ver Loja Pública
             </a>
@@ -122,8 +124,8 @@
 
         <main class="admin-main">
             <div class="admin-header-bar">
-                <h1 style="margin: 0; font-size: 24px; color: #0f172a;">Painel Master de Administração</h1>
-                <span>Master: <strong id="admin-user-name">Gilney Vidal</strong></span>
+                <h1 style="margin: 0; font-size: 24px; color: #0f172a;">Painel Administrativo</h1>
+                <span>Logado como: <strong id="admin-user-name">Gilney Vidal</strong> (<span id="admin-user-role">MASTER</span>)</span>
             </div>
 
             <!-- SEÇÃO 1: PEDIDOS -->
@@ -152,7 +154,7 @@
             <section id="sec-revendas" class="admin-section">
                 <h2>Solicitações de Revenda (Triagem Manual)</h2>
                 <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
-                    Aprove ou reprove. Conforme a LGPD, o comprovante é <strong>descartado imediatamente</strong> após a sua decisão.
+                    Aprove ou reprove. Conforme a LGPD, o comprovante é <strong>descartado imediatamente</strong> após a decisão.
                 </p>
                 <table class="admin-table">
                     <thead>
@@ -215,7 +217,7 @@
                         </div>
                     </div>
 
-                    <!-- Mapeamento Completo de Variáveis Gráficas -->
+                    <!-- Mapeamento de Variáveis Gráficas -->
                     <h4 style="margin: 20px 0 10px; color: #0f172a; font-size: 14px;"><i class="fas fa-sliders-h"></i> Atributos e Variáveis Gráficas Ativas:</h4>
                     <div class="variables-grid-complete">
                         <div>
@@ -282,12 +284,15 @@
                 </table>
             </section>
 
-            <!-- SEÇÃO 4: USUÁRIOS (COM CRIAÇÃO E EXCLUSÃO) -->
+            <!-- SEÇÃO 4: USUÁRIOS (COM NÍVEIS DE PERMISSÃO: VENDEDOR, GERENTE, MASTER) -->
             <section id="sec-usuarios" class="admin-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h2>Gerenciamento de Usuários</h2>
+                    <div>
+                        <h2 style="margin: 0 0 5px 0;">Gestão de Acessos e Usuários</h2>
+                        <p style="margin: 0; color: #64748b; font-size: 13px;">Controle permissões para clientes, revendedores, vendedores e gerentes.</p>
+                    </div>
                     <button onclick="openNewUserModal()" style="background: #f97316; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                        <i class="fas fa-user-plus"></i> + Novo Usuário
+                        <i class="fas fa-user-plus"></i> + Novo Usuário / Equipe
                     </button>
                 </div>
                 <table class="admin-table">
@@ -295,7 +300,7 @@
                         <tr>
                             <th>Nome</th>
                             <th>E-mail</th>
-                            <th>Modalidade</th>
+                            <th>Cargo / Modalidade</th>
                             <th>Status do Acesso</th>
                             <th>Ações Administrativas</th>
                         </tr>
@@ -304,7 +309,7 @@
                 </table>
             </section>
 
-            <!-- SEÇÃO 5: CONFIGURAÇÕES GLOBAIS (COM BOTÃO SALVAR FUNCIONAL) -->
+            <!-- SEÇÃO 5: CONFIGURAÇÕES GLOBAIS -->
             <section id="sec-config" class="admin-section">
                 <h2>Regras Globais do E-commerce</h2>
                 <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
@@ -344,26 +349,41 @@
         <div class="modal-inspect-box" id="modal-order-inspect-body"></div>
     </div>
 
-    <!-- Modal Novo Usuário Manual -->
+    <!-- Modal Novo Usuário / Funcionário -->
     <div id="modal-new-user" class="modal-inspect-overlay">
-        <div class="modal-inspect-box" style="max-width: 480px;">
+        <div class="modal-inspect-box" style="max-width: 500px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0;">Novo Usuário no Sistema</h3>
+                <h3 style="margin: 0; color: #0f172a;">Cadastrar Usuário / Membro da Equipe</h3>
                 <button onclick="document.getElementById('modal-new-user').style.display='none'" style="background:none; border:none; font-size:18px; cursor:pointer;">✕</button>
             </div>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">
+                Cadastre o e-mail Google da pessoa. Quando ela clicar em "Entrar com Google" no site, o sistema libera o cargo e acesso automaticamente.
+            </p>
             <form id="form-create-user-manual">
-                <input type="text" id="user-new-name" placeholder="Nome Completo" required style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                <input type="email" id="user-new-email" placeholder="E-mail" required style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                <input type="text" id="user-new-phone" placeholder="Telefone / WhatsApp" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                <select id="user-new-role" style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                    <option value="cliente_final">Cliente Final</option>
-                    <option value="revenda">Revenda Autorizada (50%)</option>
+                <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">Nome Completo:</label>
+                <input type="text" id="user-new-name" placeholder="Ex: Roberto Silva" required style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                
+                <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">E-mail do Google:</label>
+                <input type="email" id="user-new-email" placeholder="usuario@gmail.com" required style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                
+                <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">Telefone / WhatsApp:</label>
+                <input type="text" id="user-new-phone" placeholder="(11) 99999-9999" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                
+                <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">Cargo / Nível de Acesso:</label>
+                <select id="user-new-role" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600;">
+                    <option value="cliente_final">Cliente Final (Consumo Próprio 100%)</option>
+                    <option value="revenda">Revenda Autorizada (Margem 50%)</option>
+                    <option value="vendedor">📦 Vendedor / Produção (Acesso a Pedidos e PDFs)</option>
+                    <option value="gerente">👔 Gerente (Visualização Geral sem custos)</option>
                 </select>
-                <select id="user-new-status" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                
+                <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">Status de Liberação:</label>
+                <select id="user-new-status" style="width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600;">
                     <option value="aprovado">Aprovado Imediato</option>
                     <option value="pendente">Pendente de Triagem</option>
                 </select>
-                <button type="submit" style="width: 100%; background: #16a34a; color: #fff; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">Cadastrar Usuário</button>
+                
+                <button type="submit" style="width: 100%; background: #16a34a; color: #fff; border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">Salvar e Liberar Acesso</button>
             </form>
         </div>
     </div>
