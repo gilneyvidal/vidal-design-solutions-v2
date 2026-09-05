@@ -139,10 +139,10 @@
                 badge.textContent = '👑 Administrador Master';
             } else if (clientProfile?.role === 'revenda') {
                 badge.className = 'auth-status-pill badge-revenda';
-                badge.textContent = '⭐ Revenda Autorizada (50%)';
+                badge.textContent = '⭐ Revenda Autorizada'; // SEM porcentagem
             } else {
                 badge.className = 'auth-status-pill badge-cliente';
-                badge.textContent = '✅ Cliente Final (100%)';
+                badge.textContent = '✅ Cliente Final';     // SEM porcentagem
             }
 
             await loadMyOrders(user.id);
