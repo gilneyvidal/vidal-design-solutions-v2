@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/admin.js
-// OBJETIVO: Painel Master com Ficha Detalhada de Pedidos e Emissão de PDF com Logo
+// OBJETIVO: Gestão Master: Exclusões, Ficha do Pedido, Edição de Usuários e Regras
 // ==============================================================================
 
 let currentMasterUser = null;
@@ -58,13 +58,12 @@ async function loadDashboardData() {
 }
 
 // ==============================================================================
-// 1. GESTÃO DE PEDIDOS (Busca com Itens Vinculados)
+// 1. GESTÃO DE PEDIDOS & EXCLUSÃO
 // ==============================================================================
 async function loadOrders() {
     const tbody = document.getElementById('admin-orders-tbody');
     if (!tbody) return;
     try {
-        // Busca pedidos trazendo os dados do usuário e os itens da v2_order_items
         const { data, error } = await window.supabaseClient
             .from('v2_orders')
             .select(`
@@ -86,7 +85,7 @@ function renderOrdersTable(orders) {
     const tbody = document.getElementById('admin-orders-tbody');
     if (!tbody) return;
     if (!orders.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">Nenhum pedido registrado ainda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">Nenhum pedido registrado.</td></tr>';
         return;
     }
     tbody.innerHTML = '';
@@ -110,13 +109,29 @@ function renderOrdersTable(orders) {
                     <option value="cancelado" ${order.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
                 </select>
             </td>
-            <td><button class="btn-edit" onclick="viewOrderDetails('${order.id}')">Ver Detalhes</button></td>
+            <td>
+                <button class="btn-action-view" onclick="viewOrderDetails('${order.id}')">Ver Detalhes</button>
+                <button class="btn-action-delete" onclick="deleteOrder('${order.id}', '${order.order_code}')" title="Excluir Pedido">✕</button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-// Modal com Detalhes Completos do Pedido
+// Excluir Pedido
+window.deleteOrder = async function(orderId, orderCode) {
+    if (!confirm(`Tem certeza que deseja EXCLUIR permanentemente o pedido ${orderCode}?`)) return;
+    try {
+        const { error } = await window.supabaseClient.from('v2_orders').delete().eq('id', orderId);
+        if (error) throw error;
+        alert(`Pedido ${orderCode} excluído!`);
+        await loadOrders();
+    } catch (err) {
+        alert('Erro ao excluir pedido: ' + err.message);
+    }
+};
+
+// Modal Ficha Completa
 window.viewOrderDetails = function(orderId) {
     const order = allOrders.find(o => o.id === orderId);
     if (!order) return;
@@ -129,14 +144,13 @@ window.viewOrderDetails = function(orderId) {
     const clientEmail = order.user?.email || '-';
     const clientPhone = order.user?.phone || '-';
 
-    // Monta itens do pedido
     const items = order.items && order.items.length > 0 ? order.items : [
-        { product_name: 'Item do Pedido', quantity: 1, unit_price: order.subtotal || order.total, item_total: order.total }
+        { product_name: 'Material de Comunicação Visual', quantity: 1, unit_price: order.subtotal || order.total, item_total: order.total }
     ];
 
-    let itemsHTML = '';
+    let itemsRows = '';
     items.forEach((it, idx) => {
-        itemsHTML += `
+        itemsRows += `
             <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 10px;">${idx + 1}</td>
                 <td style="padding: 10px;"><strong>${it.product_name}</strong></td>
@@ -154,7 +168,7 @@ window.viewOrderDetails = function(orderId) {
     }
 
     container.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f97316; padding-bottom: 15px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f97316; padding-bottom: 15px; margin-bottom: 20px;">
             <div>
                 <h2 style="margin: 0; color: #0f172a; font-size: 22px;">Pedido ${order.order_code}</h2>
                 <small style="color: #64748b;">Registrado em: ${new Date(order.created_at).toLocaleString('pt-BR')}</small>
@@ -171,8 +185,8 @@ window.viewOrderDetails = function(orderId) {
                 <strong>Telefone:</strong> ${clientPhone}
             </div>
             <div>
-                <strong>Forma de Recebimento:</strong> ${addressHTML}<br>
-                <strong>Canal de Fechamento:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
+                <strong>Recebimento:</strong> ${addressHTML}<br>
+                <strong>Canal:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
                 <strong>Status Atual:</strong> <strong style="color: #ea580c;">${order.status.toUpperCase()}</strong>
             </div>
         </div>
@@ -182,19 +196,19 @@ window.viewOrderDetails = function(orderId) {
             <thead>
                 <tr style="background: #0f172a; color: #fff;">
                     <th style="padding: 8px; text-align: left;">#</th>
-                    <th style="padding: 8px; text-align: left;">Produto / Detalhes</th>
+                    <th style="padding: 8px; text-align: left;">Descrição da Peça</th>
                     <th style="padding: 8px; text-align: center;">Qtd</th>
                     <th style="padding: 8px; text-align: right;">Unitário</th>
                     <th style="padding: 8px; text-align: right;">Total</th>
                 </tr>
             </thead>
             <tbody>
-                ${itemsHTML}
+                ${itemsRows}
             </tbody>
         </table>
 
         <div style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
-            <div style="width: 260px; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; font-size: 13px;">
+            <div style="width: 280px; background: #fff7ed; padding: 16px; border-radius: 8px; border-left: 4px solid #f97316; font-size: 13px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                     <span>Subtotal:</span>
                     <strong>${Number(order.subtotal || order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
@@ -212,8 +226,8 @@ window.viewOrderDetails = function(orderId) {
 
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 15px;">
             <button onclick="document.getElementById('modal-order-inspect').style.display='none'" style="background: #e2e8f0; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600;">Fechar</button>
-            <button onclick="printOrderPDF('${order.id}')" style="background: #1e3a8a; color: #fff; border: none; padding: 10px 22px; border-radius: 6px; font-weight: 700; cursor: pointer;">
-                <i class="fas fa-file-pdf"></i> Baixar PDF Oficial com Logo
+            <button onclick="printOrderNative('${order.id}')" style="background: #1e3a8a; color: #fff; border: none; padding: 10px 22px; border-radius: 6px; font-weight: 700; cursor: pointer;">
+                <i class="fas fa-file-pdf"></i> Imprimir / Baixar PDF Oficial com Logo
             </button>
         </div>
     `;
@@ -221,112 +235,138 @@ window.viewOrderDetails = function(orderId) {
     modal.style.display = 'flex';
 };
 
-// Geração de PDF Oficial no Painel Master com Logo
-window.printOrderPDF = function(orderId) {
+// Emissão de PDF A4 Nativa de Alta Resolução com Logo
+window.printOrderNative = function(orderId) {
     const order = allOrders.find(o => o.id === orderId);
     if (!order) return;
 
-    const clientName = order.user?.full_name || 'Cliente';
-    const clientEmail = order.user?.email || '';
-    const items = order.items && order.items.length > 0 ? order.items : [
-        { product_name: 'Item do Pedido', quantity: 1, unit_price: order.subtotal || order.total, item_total: order.total }
-    ];
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(generateDocumentHTML(order));
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+    }, 400);
+};
 
-    const element = document.createElement('div');
-    element.style.padding = '35px';
-    element.style.fontFamily = 'Arial, sans-serif';
-    element.style.color = '#1e293b';
+function generateDocumentHTML(order) {
+    const clientName = order.user?.full_name || 'Cliente';
+    const clientEmail = order.user?.email || '-';
+    const clientPhone = order.user?.phone || '-';
+
+    const items = order.items && order.items.length > 0 ? order.items : [
+        { product_name: 'Material Gráfico / Comunicação Visual', quantity: 1, unit_price: order.subtotal || order.total, item_total: order.total }
+    ];
 
     let itemsRows = '';
     items.forEach((it, idx) => {
         itemsRows += `
             <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 10px;">${idx + 1}</td>
-                <td style="padding: 10px;"><strong>${it.product_name}</strong></td>
-                <td style="padding: 10px; text-align: center;">${it.quantity}</td>
-                <td style="padding: 10px; text-align: right;">${Number(it.unit_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td style="padding: 10px; text-align: right;"><strong>${Number(it.item_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;">${idx + 1}</td>
+                <td style="padding: 10px; border: 1px solid #e2e8f0;"><strong>${it.product_name}</strong></td>
+                <td style="padding: 10px; text-align: center; border: 1px solid #e2e8f0;">${it.quantity}</td>
+                <td style="padding: 10px; text-align: right; border: 1px solid #e2e8f0;">${Number(it.unit_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                <td style="padding: 10px; text-align: right; border: 1px solid #e2e8f0;"><strong>${Number(it.item_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
             </tr>
         `;
     });
 
-    element.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f97316; padding-bottom: 15px; margin-bottom: 25px;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <img src="../logo_cabecalho.png" style="height: 48px; max-width: 180px; object-fit: contain;" onerror="this.src='../logo.png'">
-                <div>
-                    <h1 style="margin: 0; color: #1e3a8a; font-size: 20px;">VIDAL DESIGN SOLUTIONS</h1>
-                    <p style="margin: 3px 0 0 0; color: #64748b; font-size: 12px;">Comunicação Visual, Sinalização, Toldos e Impressão Digital</p>
-                    <p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">Mogi das Cruzes - SP | Tel / WhatsApp: (11) 96864-9673</p>
+    let addressStr = 'Retirada na Empresa (Mogi das Cruzes - Grátis)';
+    if (order.delivery_type === 'entrega' && order.delivery_address) {
+        const a = order.delivery_address;
+        addressStr = `Entrega: ${a.rua || ''}, ${a.numero || ''} - ${a.bairro || ''} (${a.cidade || ''})`;
+    }
+
+    return `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Pedido_${order.order_code}</title>
+            <style>
+                @page { size: A4 portrait; margin: 12mm; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; background: #fff; }
+                .doc-box { max-width: 800px; margin: 0 auto; }
+            </style>
+        </head>
+        <body>
+            <div class="doc-box">
+                <!-- Cabeçalho Oficial -->
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f97316; padding-bottom: 15px; margin-bottom: 25px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <img src="../logo_cabecalho.png" style="height: 55px; max-width: 220px; object-fit: contain;" onerror="this.src='../logo.png'">
+                        <div>
+                            <h1 style="margin: 0; color: #1e3a8a; font-size: 20px; font-weight: 800;">VIDAL DESIGN SOLUTIONS</h1>
+                            <p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">Comunicação Visual, Sinalização, Toldos e Impressão Digital</p>
+                            <p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">Mogi das Cruzes - SP | Tel/WhatsApp: (11) 96864-9673</p>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 13px; font-weight: 800; color: #ea580c; text-transform: uppercase;">ORÇAMENTO / PEDIDO</div>
+                        <div style="font-size: 18px; font-weight: 800; color: #0f172a;">${order.order_code}</div>
+                        <div style="font-size: 11px; color: #94a3b8;">Data: ${new Date(order.created_at).toLocaleString('pt-BR')}</div>
+                    </div>
+                </div>
+
+                <!-- Dados do Cliente -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 13px;">
+                    <div>
+                        <strong>CLIENTE:</strong> ${clientName}<br>
+                        <strong>E-MAIL:</strong> ${clientEmail}<br>
+                        <strong>TELEFONE:</strong> ${clientPhone}<br>
+                        <strong>MODALIDADE:</strong> ${order.user_role === 'revenda' ? 'Revenda Autorizada (Margem 50%)' : 'Cliente Final (Margem 100%)'}
+                    </div>
+                    <div>
+                        <strong>RECEBIMENTO:</strong> ${addressStr}<br>
+                        <strong>CANAL:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
+                        <strong>STATUS:</strong> <span style="font-weight: bold; color: #16a34a;">${order.status.toUpperCase()}</span>
+                    </div>
+                </div>
+
+                <!-- Tabela de Itens -->
+                <h3 style="font-size: 14px; text-transform: uppercase; margin-bottom: 10px; color: #0f172a;">Itens & Especificações Técnicas:</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
+                    <thead>
+                        <tr style="background: #0f172a; color: #fff;">
+                            <th style="padding: 8px; text-align: left; border: 1px solid #0f172a;">#</th>
+                            <th style="padding: 8px; text-align: left; border: 1px solid #0f172a;">Descrição da Peça</th>
+                            <th style="padding: 8px; text-align: center; border: 1px solid #0f172a;">Qtd</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #0f172a;">Unitário</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #0f172a;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsRows}
+                    </tbody>
+                </table>
+
+                <!-- Resumo -->
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
+                    <div style="width: 280px; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; font-size: 13px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span>Subtotal:</span>
+                            <strong>${Number(order.subtotal || order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <span>Taxa de Arte:</span>
+                            <strong>${Number(order.art_fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #c2410c; border-top: 1px solid #fed7aa; padding-top: 6px;">
+                            <span>TOTAL DO PEDIDO:</span>
+                            <span>${Number(order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 11px; color: #64748b; text-align: center;">
+                    Documento oficial de orçamento emitido pela Vidal Design Solutions.<br>
+                    Mogi das Cruzes - SP | (11) 96864-9673 | vidaldesignsolutions@gmail.com
                 </div>
             </div>
-            <div style="text-align: right;">
-                <div style="font-size: 14px; font-weight: bold; color: #ea580c;">ORÇAMENTO / PEDIDO</div>
-                <div style="font-size: 18px; font-weight: bold; color: #0f172a;">${order.order_code}</div>
-                <div style="font-size: 11px; color: #94a3b8;">${new Date(order.created_at).toLocaleString('pt-BR')}</div>
-            </div>
-        </div>
-
-        <div style="background: #f8fafc; border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-                <strong>Cliente:</strong> ${clientName}<br>
-                <strong>E-mail:</strong> ${clientEmail}<br>
-                <strong>Modalidade:</strong> ${order.user_role === 'revenda' ? 'Revenda Autorizada (Margem 50%)' : 'Cliente Final (Margem 100%)'}
-            </div>
-            <div>
-                <strong>Forma de Recebimento:</strong> ${order.delivery_type.toUpperCase()}<br>
-                <strong>Canal:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
-                <strong>Status Atual:</strong> ${order.status.toUpperCase()}
-            </div>
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 25px;">
-            <thead>
-                <tr style="background: #1e3a8a; color: #fff;">
-                    <th style="padding: 8px; text-align: left;">#</th>
-                    <th style="padding: 8px; text-align: left;">Item & Especificações</th>
-                    <th style="padding: 8px; text-align: center;">Qtd</th>
-                    <th style="padding: 8px; text-align: right;">Unitário</th>
-                    <th style="padding: 8px; text-align: right;">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${itemsRows}
-            </tbody>
-        </table>
-
-        <div style="display: flex; justify-content: flex-end;">
-            <div style="width: 260px; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; font-size: 13px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                    <span>Subtotal:</span>
-                    <strong>${Number(order.subtotal || order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                    <span>Taxa de Arte:</span>
-                    <strong>${Number(order.art_fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #c2410c; border-top: 1px solid #fed7aa; padding-top: 6px;">
-                    <span>VALOR TOTAL:</span>
-                    <span>${Number(order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
-            </div>
-        </div>
-
-        <div style="margin-top: 35px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 11px; color: #94a3b8; text-align: center;">
-            Documento emitido pelo Painel Master oficial da Vidal Design Solutions.
-        </div>
+        </body>
+        </html>
     `;
-
-    const opt = {
-        margin: 10,
-        filename: `Pedido_${order.order_code.replace('#', '')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    window.html2pdf().set(opt).from(element).save();
-};
+}
 
 window.updateOrderStatus = async function(orderId, newStatus) {
     try {
@@ -386,15 +426,35 @@ function renderUsersTable(tbody, list) {
             <td><strong>${u.status.toUpperCase()}</strong></td>
             <td>
                 ${u.role !== 'master' ? `
-                    <button class="btn-edit" onclick="toggleUserRole('${u.id}', '${u.role}')">
-                        Mudar para ${u.role === 'revenda' ? 'Cliente Final' : 'Revenda'}
-                    </button>
+                    <button class="btn-action-view" onclick="editUserRole('${u.id}', '${u.role}')" style="padding:4px 8px; font-size:11px;">Mudar Modalidade</button>
+                    <button class="btn-action-delete" onclick="deleteUserAccount('${u.id}', '${u.full_name || u.email}')" title="Excluir Usuário">✕</button>
                 ` : '<em>Master Oficial</em>'}
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
+
+window.openNewUserModal = function() {
+    document.getElementById('modal-new-user').style.display = 'flex';
+};
+
+window.deleteUserAccount = async function(userId, userName) {
+    if (!confirm(`Deseja realmente EXCLUIR o usuário "${userName}" do sistema?`)) return;
+    try {
+        const { error } = await window.supabaseClient.from('v2_profiles').delete().eq('id', userId);
+        if (error) throw error;
+        alert('Usuário excluído!');
+        await loadUsersAndResellers();
+    } catch (err) { alert('Erro: ' + err.message); }
+};
+
+window.editUserRole = async function(userId, currentRole) {
+    const targetRole = currentRole === 'revenda' ? 'cliente_final' : 'revenda';
+    if (!confirm(`Deseja alterar a modalidade deste usuário para ${targetRole.toUpperCase()}?`)) return;
+    await window.supabaseClient.from('v2_profiles').update({ role: targetRole, requested_role: targetRole }).eq('id', userId);
+    await loadUsersAndResellers();
+};
 
 window.decisionReseller = async function(userId, approved) {
     if (!confirm(`Confirma a decisão? O arquivo comprobatório será excluído permanentemente (LGPD).`)) return;
@@ -415,18 +475,11 @@ window.decisionReseller = async function(userId, approved) {
 
         alert('Decisão gravada e arquivo descartado com sucesso!');
         await loadUsersAndResellers();
-    } catch (err) { alert('Erro ao processar: ' + err.message); }
-};
-
-window.toggleUserRole = async function(userId, currentRole) {
-    const targetRole = currentRole === 'revenda' ? 'cliente_final' : 'revenda';
-    if (!confirm(`Deseja alterar a modalidade deste usuário para ${targetRole.toUpperCase()}?`)) return;
-    await window.supabaseClient.from('v2_profiles').update({ role: targetRole, requested_role: targetRole }).eq('id', userId);
-    await loadUsersAndResellers();
+    } catch (err) { alert('Erro: ' + err.message); }
 };
 
 // ==============================================================================
-// 3. CATÁLOGO & VARIÁVEIS DO MERCADO GRÁFICO
+// 3. CATÁLOGO & EXCLUSÃO DE PRODUTOS
 // ==============================================================================
 async function loadProductsList() {
     const tbody = document.getElementById('admin-products-tbody');
@@ -455,11 +508,24 @@ function renderProductsTable(products) {
             <td><span style="color:#16a34a; font-weight:700;">${revenda.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (+50%)</span></td>
             <td><span style="color:#c2410c; font-weight:700;">${cliente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (+100%)</span></td>
             <td>${p.is_active ? '✅ Ativo' : '❌ Inativo'}</td>
-            <td><button class="btn-edit" onclick="editProduct('${p.id}')">Editar</button></td>
+            <td>
+                <button class="btn-action-view" onclick="editProduct('${p.id}')" style="padding:4px 8px; font-size:11px;">Editar</button>
+                <button class="btn-action-delete" onclick="deleteProduct('${p.id}', '${p.name}')" title="Excluir Produto">✕</button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
 }
+
+window.deleteProduct = async function(prodId, prodName) {
+    if (!confirm(`Deseja realmente EXCLUIR o produto "${prodName}" do catálogo?`)) return;
+    try {
+        const { error } = await window.supabaseClient.from('v2_products').delete().eq('id', prodId);
+        if (error) throw error;
+        alert(`Produto "${prodName}" excluído!`);
+        await loadProductsList();
+    } catch (err) { alert('Erro ao excluir: ' + err.message); }
+};
 
 window.editProduct = function(prodId) {
     const prod = allProducts.find(p => p.id === prodId);
@@ -517,7 +583,14 @@ async function saveProduct(formData) {
             adesivo: formData.get('var_mat_adesivo') === 'on',
             lona: formData.get('var_mat_lona') === 'on',
             papeis: formData.get('var_mat_papeis') === 'on',
-            rigidos: formData.get('var_mat_rigidos') === 'on'
+            rigidos: formData.get('var_mat_rigidos') === 'on',
+            dtf: formData.get('var_mat_dtf') === 'on'
+        },
+        colors: {
+            c_4x0: formData.get('var_cor_4x0') === 'on',
+            c_4x4: formData.get('var_cor_4x4') === 'on',
+            c_1x0: formData.get('var_cor_1x0') === 'on',
+            c_uv: formData.get('var_cor_uv') === 'on'
         },
         finishes: {
             laminacao: formData.get('var_acab_laminacao') === 'on',
@@ -555,16 +628,51 @@ async function saveProduct(formData) {
         }
         document.getElementById('btn-cancel-edit').click();
         await loadProductsList();
-    } catch (err) {
-        alert('Erro ao salvar: ' + err.message);
-    }
+    } catch (err) { alert('Erro ao salvar: ' + err.message); }
 }
 
+// ==============================================================================
+// 4. CONFIGURAÇÕES GLOBAIS (COM SALVAMENTO REAL)
+// ==============================================================================
 async function loadSettings() {
     try {
         const { data } = await window.supabaseClient.from('v2_settings').select('*').eq('id', 'global').single();
-        if (data) document.getElementById('cfg-whatsapp').value = data.whatsapp_number || '+5511949141803';
+        if (data) {
+            document.getElementById('cfg-reseller-margin').value = data.reseller_margin * 100;
+            document.getElementById('cfg-retail-margin').value = data.retail_margin * 100;
+            document.getElementById('cfg-art-fee').value = data.art_fee;
+            document.getElementById('cfg-min-area').value = data.min_area_sqm;
+            document.getElementById('cfg-whatsapp').value = data.whatsapp_number || '+5511949141803';
+        }
     } catch (e) {}
+}
+
+async function saveGlobalSettings(e) {
+    e.preventDefault();
+    const resMargin = (parseFloat(document.getElementById('cfg-reseller-margin').value) || 50) / 100;
+    const retMargin = (parseFloat(document.getElementById('cfg-retail-margin').value) || 100) / 100;
+    const artFee = parseFloat(document.getElementById('cfg-art-fee').value) || 40;
+    const minArea = parseFloat(document.getElementById('cfg-min-area').value) || 0.5;
+    const whatsApp = document.getElementById('cfg-whatsapp').value;
+
+    try {
+        const { error } = await window.supabaseClient
+            .from('v2_settings')
+            .update({
+                reseller_margin: resMargin,
+                retail_margin: retMargin,
+                art_fee: artFee,
+                min_area_sqm: minArea,
+                whatsapp_number: whatsApp,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', 'global');
+
+        if (error) throw error;
+        alert('Regras Globais salvas com sucesso no banco de dados!');
+    } catch (err) {
+        alert('Erro ao salvar configurações: ' + err.message);
+    }
 }
 
 function initAdminEventListeners() {
@@ -577,6 +685,33 @@ function initAdminEventListeners() {
     document.getElementById('form-new-product')?.addEventListener('submit', (e) => {
         e.preventDefault();
         saveProduct(new FormData(e.target));
+    });
+
+    document.getElementById('form-global-settings')?.addEventListener('submit', saveGlobalSettings);
+
+    document.getElementById('form-create-user-manual')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('user-new-name').value;
+        const email = document.getElementById('user-new-email').value;
+        const phone = document.getElementById('user-new-phone').value;
+        const role = document.getElementById('user-new-role').value;
+        const status = document.getElementById('user-new-status').value;
+
+        try {
+            const { error } = await window.supabaseClient.from('v2_profiles').insert({
+                id: crypto.randomUUID(),
+                email: email,
+                full_name: name,
+                phone: phone,
+                role: role,
+                status: status,
+                requested_role: role
+            });
+            if (error) throw error;
+            alert('Usuário cadastrado com sucesso!');
+            document.getElementById('modal-new-user').style.display = 'none';
+            await loadUsersAndResellers();
+        } catch (err) { alert('Erro: ' + err.message); }
     });
 
     document.getElementById('new-prod-cost')?.addEventListener('input', (e) => {
