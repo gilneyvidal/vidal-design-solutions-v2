@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/cart.js
-// OBJETIVO: Carrinho com Emissão Completa de PDF e Integração Provisória com WhatsApp
+// OBJETIVO: Carrinho com Anexo de Arte, Geração de PDF Fiel e Checkout Duplo
 // ==============================================================================
 
 const CART_STORAGE_KEY = 'vidalCart';
@@ -173,6 +173,7 @@ function initCartEvents() {
     });
 }
 
+// Grava o pedido com anexo de arte e todos os itens
 async function processOrderSubmission(paymentMethod) {
     if (!currentCart.length) {
         alert('Seu carrinho está vazio.');
@@ -201,6 +202,21 @@ async function processOrderSubmission(paymentMethod) {
         addressData = { rua, numero: num, bairro, cidade };
     }
 
+    // Upload do arquivo de arte se fornecido
+    const artworkFileInput = document.getElementById('order-artwork-file');
+    const sendViaWpp = document.getElementById('send-artwork-via-wpp')?.checked;
+    let artworkFileName = null;
+
+    if (artworkFileInput && artworkFileInput.files.length > 0) {
+        try {
+            const artFile = artworkFileInput.files[0];
+            artworkFileName = `arte_${currentUser.id}_${Date.now()}.${artFile.name.split('.').pop()}`;
+            await window.supabaseClient.storage.from('order-documents').upload(`artes/${artworkFileName}`, artFile);
+        } catch (uploadErr) {
+            console.warn('Upload de arte pelo site falhou, cliente enviará pelo WhatsApp:', uploadErr);
+        }
+    }
+
     let subtotal = 0;
     let artFee = 0;
     currentCart.forEach(it => {
@@ -209,7 +225,10 @@ async function processOrderSubmission(paymentMethod) {
     });
     const total = subtotal + artFee;
 
+    let notesText = artworkFileName ? `Arquivo de Arte Anexado: ${artworkFileName}` : (sendViaWpp ? 'Arte será enviada via WhatsApp' : 'Sem anexo inicial');
+
     try {
+        // 1. Inserir Pedido Principal
         const { data: orderData, error: orderErr } = await window.supabaseClient
             .from('v2_orders')
             .insert({
@@ -221,13 +240,16 @@ async function processOrderSubmission(paymentMethod) {
                 payment_method: paymentMethod,
                 subtotal: subtotal,
                 art_fee: artFee,
-                total: total
+                total: total,
+                pdf_url: artworkFileName ? `https://ibaavtapoqbvcbbqynxs.supabase.co/storage/v1/object/public/order-documents/artes/${artworkFileName}` : null,
+                notes: notesText
             })
             .select()
             .single();
 
         if (orderErr) throw orderErr;
 
+        // 2. Inserir Itens na tabela v2_order_items
         const itemsPayload = currentCart.map(it => ({
             order_id: orderData.id,
             product_name: it.name,
@@ -244,9 +266,8 @@ async function processOrderSubmission(paymentMethod) {
         updateCartCount();
 
         if (paymentMethod === 'whatsapp') {
-            sendWhatsAppWithOrder(orderData, savedItems);
+            sendWhatsAppWithOrder(orderData, savedItems, notesText);
         } else {
-            // Modal de conclusão Mercado Pago provisório com PDF e WhatsApp
             showOrderFinishedModal(orderData, savedItems, 'Mercado Pago');
         }
 
@@ -256,7 +277,7 @@ async function processOrderSubmission(paymentMethod) {
     }
 }
 
-function sendWhatsAppWithOrder(order, items) {
+function sendWhatsAppWithOrder(order, items, notes) {
     const phone = globalSettings?.whatsapp_number || '5511968649673';
     const clientName = currentProfile?.full_name || 'Cliente';
 
@@ -266,6 +287,7 @@ function sendWhatsAppWithOrder(order, items) {
     msg += `*Cliente:* ${clientName}\n`;
     msg += `*Modalidade:* ${order.user_role === 'revenda' ? 'Revenda' : 'Cliente Final'}\n`;
     msg += `*Recebimento:* ${order.delivery_type.toUpperCase()}\n`;
+    msg += `*Arte:* ${notes}\n`;
     msg += `----------------------------------------\n`;
     msg += `*ITENS DO PEDIDO:*\n`;
 
@@ -277,7 +299,7 @@ function sendWhatsAppWithOrder(order, items) {
 
     msg += `\n----------------------------------------\n`;
     msg += `*VALOR TOTAL:* ${Number(order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\n`;
-    msg += `\nOlá! Acabei de gerar o pedido sob o ID *${order.order_code}* no site e gostaria de confirmar a produção!`;
+    msg += `\nOlá! Acabei de gerar o pedido sob o ID *${order.order_code}* pelo site e gostaria de confirmar a produção e envio dos arquivos!`;
 
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
     showOrderFinishedModal(order, items, 'WhatsApp');
@@ -302,8 +324,8 @@ function showOrderFinishedModal(order, items, canal) {
             </div>
             <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 20px;">
                 ${isMP 
-                    ? 'Seu pedido foi registrado na plataforma! Enquanto preparamos o checkout transparente, você pode baixar seu PDF completo e confirmar a liberação imediata via WhatsApp.' 
-                    : 'Seu pedido foi registrado no sistema e encaminhado para o WhatsApp oficial da empresa.'}
+                    ? 'Seu pedido foi registrado no sistema! Baixe o seu orçamento oficial com todas as peças e confirme a liberação via WhatsApp.' 
+                    : 'Seu pedido foi registrado e encaminhado para atendimento no WhatsApp.'}
             </p>
             <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                 <button onclick="downloadNativeCartPDF('${order.id}')" style="background:#1e3a8a; color:#fff; border:none; padding:12px 20px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">
@@ -316,7 +338,6 @@ function showOrderFinishedModal(order, items, canal) {
         </div>
     `;
 
-    // Função de emissão com tabela de itens garantida
     window.downloadNativeCartPDF = function() {
         const printWindow = window.open('', '_blank');
         const safeItems = items && items.length > 0 ? items : [
@@ -335,6 +356,12 @@ function showOrderFinishedModal(order, items, canal) {
                 </tr>
             `;
         });
+
+        let addressStr = 'Retirada na Empresa (Mogi das Cruzes - Grátis)';
+        if (order.delivery_type === 'entrega' && order.delivery_address) {
+            const a = order.delivery_address;
+            addressStr = `Entrega: ${a.rua || ''}, ${a.numero || ''} - ${a.bairro || ''} (${a.cidade || ''})`;
+        }
 
         printWindow.document.write(`
             <!DOCTYPE html>
@@ -372,7 +399,7 @@ function showOrderFinishedModal(order, items, canal) {
                             <strong>TELEFONE:</strong> ${currentProfile?.phone || '-'}
                         </div>
                         <div>
-                            <strong>RECEBIMENTO:</strong> ${order.delivery_type.toUpperCase()}<br>
+                            <strong>RECEBIMENTO:</strong> ${addressStr}<br>
                             <strong>CANAL:</strong> ${canal.toUpperCase()}<br>
                             <strong>STATUS:</strong> <span style="font-weight:bold; color:#16a34a;">RECEBIDO</span>
                         </div>
@@ -410,8 +437,8 @@ function showOrderFinishedModal(order, items, canal) {
                     </div>
 
                     <div style="border-top:1px solid #e2e8f0; padding-top:15px; font-size:11px; color:#64748b; text-align:center;">
-                        Documento emitido oficialmente pela Vidal Design Solutions.<br>
-                        Mogi das Cruzes - SP | (11) 96864-9673
+                        Documento OFICIAL emitido pela Vidal Design Solutions.<br>
+                        Mogi das Cruzes - SP | (11) 96864-9673 | (11) 94914-1803
                     </div>
                 </div>
             </body>
