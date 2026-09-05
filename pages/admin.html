@@ -20,7 +20,7 @@
         .admin-sidebar { background: #0f172a; color: #fff; padding: 25px 0; }
         .admin-sidebar-header { padding: 0 25px 25px; border-bottom: 1px solid #1e293b; text-align: center; }
         
-        /* LOGO OFICIAL BRANCO PARA FUNDO ESCURO */
+        /* LOGO BRANCO PARA FUNDO ESCURO */
         .admin-logo-img { max-width: 190px; height: auto; max-height: 60px; object-fit: contain; margin-bottom: 8px; }
         .admin-sidebar-header small { color: #f97316; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
         
@@ -106,7 +106,7 @@
     <div class="admin-layout">
         <aside class="admin-sidebar">
             <div class="admin-sidebar-header">
-                <!-- Logotipo Branco Oficial para o Fundo Escuro -->
+                <!-- Logotipo Branco Oficial -->
                 <img src="../logo.png" alt="Vidal Design Solutions" class="admin-logo-img">
                 <small>Gestão Central V2</small>
             </div>
@@ -125,7 +125,8 @@
         <main class="admin-main">
             <div class="admin-header-bar">
                 <h1 style="margin: 0; font-size: 24px; color: #0f172a;">Painel Administrativo</h1>
-                <span>Logado como: <strong id="admin-user-name">Gilney Vidal</strong> (<span id="admin-user-role">MASTER</span>)</span>
+                <!-- Elementos de Nome e Cargo Corretos -->
+                <span>Logado como: <strong id="admin-user-name">Gilney Vidal</strong> (<span id="admin-user-role" style="font-weight: bold; color: #f97316;">MASTER</span>)</span>
             </div>
 
             <!-- SEÇÃO 1: PEDIDOS -->
@@ -217,7 +218,7 @@
                         </div>
                     </div>
 
-                    <!-- Mapeamento de Variáveis Gráficas -->
+                    <!-- Mapeamento Completo de Variáveis Gráficas -->
                     <h4 style="margin: 20px 0 10px; color: #0f172a; font-size: 14px;"><i class="fas fa-sliders-h"></i> Atributos e Variáveis Gráficas Ativas:</h4>
                     <div class="variables-grid-complete">
                         <div>
@@ -284,7 +285,7 @@
                 </table>
             </section>
 
-            <!-- SEÇÃO 4: USUÁRIOS (COM NÍVEIS DE PERMISSÃO: VENDEDOR, GERENTE, MASTER) -->
+            <!-- SEÇÃO 4: USUÁRIOS -->
             <section id="sec-usuarios" class="admin-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <div>
@@ -371,8 +372,8 @@
                 
                 <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 4px;">Cargo / Nível de Acesso:</label>
                 <select id="user-new-role" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600;">
-                    <option value="cliente_final">Cliente Final (Consumo Próprio 100%)</option>
-                    <option value="revenda">Revenda Autorizada (Margem 50%)</option>
+                    <option value="cliente_final">Cliente Final (Consumo Próprio)</option>
+                    <option value="revenda">Revenda Autorizada (Tabela de Revenda)</option>
                     <option value="vendedor">📦 Vendedor / Produção (Acesso a Pedidos e PDFs)</option>
                     <option value="gerente">👔 Gerente (Visualização Geral sem custos)</option>
                 </select>
