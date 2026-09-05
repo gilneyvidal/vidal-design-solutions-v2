@@ -97,7 +97,7 @@
                 <li id="menu-revendas"><a class="admin-nav-item" data-target="sec-revendas"><i class="fas fa-user-clock"></i> Triagem & Cadastros</a></li>
                 <li id="menu-produtos"><a class="admin-nav-item" data-target="sec-produtos"><i class="fas fa-tags"></i> Catálogo & Variáveis</a></li>
                 <li id="menu-usuarios"><a class="admin-nav-item" data-target="sec-usuarios"><i class="fas fa-users"></i> Gestão de Usuários</a></li>
-                <li id="menu-config"><a class="admin-nav-item" data-target="sec-config"><i class="fas fa-cog"></i> Regras Globais</a></li>
+                <li id="menu-config"><a class="admin-nav-item" data-target="sec-config"><i class="fas fa-cog"></i> Regras Globais & Mercado Pago</a></li>
             </ul>
             <a href="../index.html" target="_blank" class="admin-nav-link-store">
                 <i class="fas fa-external-link-alt"></i> Ver Loja Pública
@@ -291,13 +291,13 @@
                 </table>
             </section>
 
-            <!-- SEÇÃO 5: CONFIGURAÇÕES GLOBAIS -->
+            <!-- SEÇÃO 5: CONFIGURAÇÕES GLOBAIS & MERCADO PAGO -->
             <section id="sec-config" class="admin-section">
-                <h2>Regras Globais do E-commerce</h2>
+                <h2>Regras Globais & Integração Mercado Pago</h2>
                 <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
-                    Altere os parâmetros e clique em salvar para atualizar as regras do sistema no banco.
+                    Altere os parâmetros e salve suas credenciais para ativar o checkout automático.
                 </p>
-                <form id="form-global-settings" style="max-width: 550px;">
+                <form id="form-global-settings" style="max-width: 600px;">
                     <div style="margin-bottom: 15px;">
                         <label style="font-weight: 700; display: block; margin-bottom: 5px;">Margem Padrão de Revenda (%):</label>
                         <input type="number" id="cfg-reseller-margin" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
@@ -318,8 +318,23 @@
                         <label style="font-weight: 700; display: block; margin-bottom: 5px;">WhatsApp para Recebimento de Pedidos:</label>
                         <input type="text" id="cfg-whatsapp" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
+
+                    <!-- Credenciais Oficiais Mercado Pago -->
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 18px; margin-bottom: 25px;">
+                        <h4 style="margin: 0 0 10px 0; color: #166534; font-size: 15px;"><i class="fas fa-lock"></i> Credenciais Oficiais Mercado Pago</h4>
+                        
+                        <label style="font-weight: 700; font-size: 12px; display: block; margin-bottom: 4px; color: #166534;">Public Key (Chave Pública):</label>
+                        <input type="text" id="cfg-mp-public-key" value="APP_USR-28071eb5-e000-4523-8564-4cd716a7a580" required style="width: 100%; padding: 10px; border: 1px solid #86efac; border-radius: 6px; margin-bottom: 12px; font-family: monospace; font-size: 13px;">
+
+                        <label style="font-weight: 700; font-size: 12px; display: block; margin-bottom: 4px; color: #166534;">Access Token (Token Secreto de Produção):</label>
+                        <input type="password" id="cfg-mp-access-token" placeholder="Cole aqui o seu Access Token (APP_USR-...)" style="width: 100%; padding: 10px; border: 1px solid #86efac; border-radius: 6px; font-family: monospace; font-size: 13px;">
+                        <small style="display: block; color: #15803d; font-size: 11px; margin-top: 5px;">
+                            🔒 <strong>Segurança Total:</strong> Seu Access Token é armazenado de forma criptografada no Supabase e nunca fica exposto no código público do site.
+                        </small>
+                    </div>
+
                     <button type="submit" style="background: #16a34a; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                        <i class="fas fa-save"></i> Salvar Regras Globais
+                        <i class="fas fa-save"></i> Salvar Regras & Mercado Pago
                     </button>
                 </form>
             </section>
