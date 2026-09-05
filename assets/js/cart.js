@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/cart.js
-// OBJETIVO: Gerenciamento do Carrinho, Gravação de Itens no Supabase e PDF com Logo
+// OBJETIVO: Carrinho com Emissão Completa de PDF e Integração Provisória com WhatsApp
 // ==============================================================================
 
 const CART_STORAGE_KEY = 'vidalCart';
@@ -74,9 +74,7 @@ async function loadGlobalSettings() {
             .eq('id', 'global')
             .single();
         globalSettings = data;
-    } catch (e) {
-        console.warn('Configurações globais não carregadas.');
-    }
+    } catch (e) {}
 }
 
 function renderCartPageUI() {
@@ -147,14 +145,12 @@ function renderCartPageUI() {
 window.changeQty = function(index, delta) {
     if (!currentCart[index]) return;
     currentCart[index].quantity += delta;
-    if (currentCart[index].quantity <= 0) {
-        currentCart.splice(index, 1);
-    }
+    if (currentCart[index].quantity <= 0) currentCart.splice(index, 1);
     saveCartToStorage();
 };
 
 window.removeCartItem = function(index) {
-    if (confirm('Deseja remover esta peça do seu pedido?')) {
+    if (confirm('Deseja remover este item do seu pedido?')) {
         currentCart.splice(index, 1);
         saveCartToStorage();
     }
@@ -177,7 +173,6 @@ function initCartEvents() {
     });
 }
 
-// Grava o pedido com todos os itens na tabela v2_order_items
 async function processOrderSubmission(paymentMethod) {
     if (!currentCart.length) {
         alert('Seu carrinho está vazio.');
@@ -185,7 +180,7 @@ async function processOrderSubmission(paymentMethod) {
     }
 
     if (!currentUser || !currentProfile) {
-        alert('Por favor, faça login com o Google para vincular e emitir seu pedido oficial.');
+        alert('Faça login com o Google para vincular e emitir seu orçamento oficial.');
         window.AuthController?.loginWithGoogle();
         return;
     }
@@ -215,7 +210,6 @@ async function processOrderSubmission(paymentMethod) {
     const total = subtotal + artFee;
 
     try {
-        // 1. Inserir Pedido Master
         const { data: orderData, error: orderErr } = await window.supabaseClient
             .from('v2_orders')
             .insert({
@@ -234,7 +228,6 @@ async function processOrderSubmission(paymentMethod) {
 
         if (orderErr) throw orderErr;
 
-        // 2. Inserir Itens na tabela v2_order_items
         const itemsPayload = currentCart.map(it => ({
             order_id: orderData.id,
             product_name: it.name,
@@ -243,8 +236,7 @@ async function processOrderSubmission(paymentMethod) {
             item_total: it.basePrice * it.quantity
         }));
 
-        const { error: itemsErr } = await window.supabaseClient.from('v2_order_items').insert(itemsPayload);
-        if (itemsErr) console.warn('Aviso itens:', itemsErr);
+        await window.supabaseClient.from('v2_order_items').insert(itemsPayload);
 
         const savedItems = [...currentCart];
         localStorage.removeItem(CART_STORAGE_KEY);
@@ -254,6 +246,7 @@ async function processOrderSubmission(paymentMethod) {
         if (paymentMethod === 'whatsapp') {
             sendWhatsAppWithOrder(orderData, savedItems);
         } else {
+            // Modal de conclusão Mercado Pago provisório com PDF e WhatsApp
             showOrderFinishedModal(orderData, savedItems, 'Mercado Pago');
         }
 
@@ -274,7 +267,7 @@ function sendWhatsAppWithOrder(order, items) {
     msg += `*Modalidade:* ${order.user_role === 'revenda' ? 'Revenda' : 'Cliente Final'}\n`;
     msg += `*Recebimento:* ${order.delivery_type.toUpperCase()}\n`;
     msg += `----------------------------------------\n`;
-    msg += `*ITENS DO ORÇAMENTO:*\n`;
+    msg += `*ITENS DO PEDIDO:*\n`;
 
     items.forEach((it, i) => {
         msg += `\n${i+1}. *${it.name}*\n`;
@@ -299,135 +292,133 @@ function showOrderFinishedModal(order, items, canal) {
         document.body.appendChild(modal);
     }
 
+    const isMP = canal === 'Mercado Pago';
     modal.innerHTML = `
-        <div style="background:#fff; padding:35px; border-radius:16px; max-width:550px; width:90%; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.3);">
-            <i class="fas fa-check-circle" style="font-size: 55px; color: #16a34a; margin-bottom: 15px;"></i>
-            <h2 style="font-family:Montserrat, sans-serif; font-size: 24px; color: #0f172a; margin-bottom: 8px;">Pedido Registrado com Sucesso!</h2>
-            <div style="background: #f1f5f9; padding: 10px 20px; border-radius: 8px; font-weight: 800; font-size: 20px; color: #ea580c; display: inline-block; margin: 10px 0 20px;">
+        <div style="background:#fff; padding:35px; border-radius:16px; max-width:580px; width:90%; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+            <i class="fas fa-check-circle" style="font-size: 50px; color: #16a34a; margin-bottom: 12px;"></i>
+            <h2 style="font-family:Montserrat, sans-serif; font-size: 22px; color: #0f172a; margin-bottom: 8px;">Pedido Registrado com Sucesso!</h2>
+            <div style="background: #f1f5f9; padding: 10px 20px; border-radius: 8px; font-weight: 800; font-size: 20px; color: #ea580c; display: inline-block; margin: 10px 0 15px;">
                 ${order.order_code}
             </div>
-            <p style="font-size: 14px; color: #64748b; line-height: 1.6; margin-bottom: 25px;">
-                Seu pedido foi registrado no sistema através do canal <strong>${canal}</strong> e vinculado à sua conta oficial.
+            <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin-bottom: 20px;">
+                ${isMP 
+                    ? 'Seu pedido foi registrado na plataforma! Enquanto preparamos o checkout transparente, você pode baixar seu PDF completo e confirmar a liberação imediata via WhatsApp.' 
+                    : 'Seu pedido foi registrado no sistema e encaminhado para o WhatsApp oficial da empresa.'}
             </p>
-            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                <button id="btn-dl-pdf" style="background:#1e3a8a; color:#fff; border:none; padding:12px 24px; border-radius:8px; font-weight:700; cursor:pointer; font-size:14px;">
-                    <i class="fas fa-file-pdf"></i> Baixar Orçamento Oficial em PDF
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button onclick="downloadNativeCartPDF('${order.id}')" style="background:#1e3a8a; color:#fff; border:none; padding:12px 20px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">
+                    <i class="fas fa-file-pdf"></i> Baixar Orçamento Oficial (PDF)
                 </button>
-                <a href="../index.html" style="background:#f1f5f9; color:#475569; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:14px;">
-                    Voltar ao Início
+                <a href="https://wa.me/${globalSettings?.whatsapp_number || '5511968649673'}?text=${encodeURIComponent('Olá! Acabei de gerar o pedido ' + order.order_code + ' pelo site.')}" target="_blank" style="background:#25d366; color:#fff; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:700; font-size:13px;">
+                    <i class="fab fa-whatsapp"></i> Acompanhar no WhatsApp
                 </a>
             </div>
         </div>
     `;
 
-    document.getElementById('btn-dl-pdf').addEventListener('click', () => {
-        downloadOrderPDF(order, items);
-    });
-}
+    // Função de emissão com tabela de itens garantida
+    window.downloadNativeCartPDF = function() {
+        const printWindow = window.open('', '_blank');
+        const safeItems = items && items.length > 0 ? items : [
+            { name: 'Material Gráfico / Comunicação Visual', quantity: 1, basePrice: order.subtotal || order.total }
+        ];
 
-// Emissão de PDF com Logotipo Oficial e Tabela de Itens
-function downloadOrderPDF(order, items) {
-    const clientName = currentProfile?.full_name || 'Cliente';
-    const clientEmail = currentProfile?.email || '';
-
-    const element = document.createElement('div');
-    element.style.padding = '35px';
-    element.style.fontFamily = 'Arial, sans-serif';
-    element.style.color = '#1e293b';
-
-    const safeItems = items && items.length > 0 ? items : [
-        { name: 'Item do Pedido', quantity: 1, basePrice: order.subtotal || order.total }
-    ];
-
-    let itemsRows = '';
-    safeItems.forEach((it, idx) => {
-        const uPrice = Number(it.basePrice || it.unit_price) || 0;
-        const q = Number(it.quantity) || 1;
-        itemsRows += `
-            <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td style="padding: 10px;">${idx + 1}</td>
-                <td style="padding: 10px;"><strong>${it.name || it.product_name}</strong></td>
-                <td style="padding: 10px; text-align: center;">${q}</td>
-                <td style="padding: 10px; text-align: right;">${uPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td style="padding: 10px; text-align: right;"><strong>${(uPrice * q).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
-            </tr>
-        `;
-    });
-
-    element.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f97316; padding-bottom: 15px; margin-bottom: 25px;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <img src="../logo_cabecalho.png" style="height: 48px; max-width: 180px; object-fit: contain;" onerror="this.src='../logo.png'">
-                <div>
-                    <h1 style="margin: 0; color: #1e3a8a; font-size: 20px;">VIDAL DESIGN SOLUTIONS</h1>
-                    <p style="margin: 3px 0 0 0; color: #64748b; font-size: 12px;">Comunicação Visual, Sinalização, Toldos e Impressão Digital</p>
-                    <p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">Mogi das Cruzes - SP | Tel / WhatsApp: (11) 96864-9673</p>
-                </div>
-            </div>
-            <div style="text-align: right;">
-                <div style="font-size: 14px; font-weight: bold; color: #ea580c;">ORÇAMENTO / PEDIDO</div>
-                <div style="font-size: 18px; font-weight: bold; color: #0f172a;">${order.order_code}</div>
-                <div style="font-size: 11px; color: #94a3b8;">${new Date().toLocaleString('pt-BR')}</div>
-            </div>
-        </div>
-
-        <div style="background: #f8fafc; border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-                <strong>Cliente:</strong> ${clientName}<br>
-                <strong>E-mail:</strong> ${clientEmail}<br>
-                <strong>Modalidade:</strong> ${order.user_role === 'revenda' ? 'Revenda Autorizada (Margem 50%)' : 'Cliente Final (Margem 100%)'}
-            </div>
-            <div>
-                <strong>Recebimento:</strong> ${order.delivery_type.toUpperCase()}<br>
-                <strong>Canal:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
-                <strong>Status Inicial:</strong> ${order.status.toUpperCase()}
-            </div>
-        </div>
-
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 25px;">
-            <thead>
-                <tr style="background: #1e3a8a; color: #fff;">
-                    <th style="padding: 8px; text-align: left;">#</th>
-                    <th style="padding: 8px; text-align: left;">Item & Especificações</th>
-                    <th style="padding: 8px; text-align: center;">Qtd</th>
-                    <th style="padding: 8px; text-align: right;">Unitário</th>
-                    <th style="padding: 8px; text-align: right;">Total</th>
+        let rows = '';
+        safeItems.forEach((it, idx) => {
+            rows += `
+                <tr>
+                    <td style="padding:10px; border:1px solid #e2e8f0;">${idx + 1}</td>
+                    <td style="padding:10px; border:1px solid #e2e8f0;"><strong>${it.name || it.product_name}</strong></td>
+                    <td style="padding:10px; text-align:center; border:1px solid #e2e8f0;">${it.quantity}</td>
+                    <td style="padding:10px; text-align:right; border:1px solid #e2e8f0;">${Number(it.basePrice || it.unit_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td style="padding:10px; text-align:right; border:1px solid #e2e8f0;"><strong>${(Number(it.basePrice || it.unit_price) * Number(it.quantity)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
                 </tr>
-            </thead>
-            <tbody>
-                ${itemsRows}
-            </tbody>
-        </table>
+            `;
+        });
 
-        <div style="display: flex; justify-content: flex-end;">
-            <div style="width: 260px; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; font-size: 13px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                    <span>Subtotal:</span>
-                    <strong>${Number(order.subtotal || order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                    <span>Taxa de Arte:</span>
-                    <strong>${Number(order.art_fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #c2410c; border-top: 1px solid #fed7aa; padding-top: 6px;">
-                    <span>VALOR TOTAL:</span>
-                    <span>${Number(order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
-            </div>
-        </div>
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="UTF-8">
+                <title>Pedido_${order.order_code}</title>
+                <style>
+                    @page { size: A4 portrait; margin: 12mm; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; margin: 0; padding: 20px; }
+                </style>
+            </head>
+            <body>
+                <div style="max-width: 800px; margin: 0 auto;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #f97316; padding-bottom:15px; margin-bottom:25px;">
+                        <div style="display:flex; align-items:center; gap:15px;">
+                            <img src="../logo_cabecalho.png" style="height:55px; max-width:220px; object-fit:contain;" onerror="this.src='../logo.png'">
+                            <div>
+                                <h1 style="margin:0; color:#1e3a8a; font-size:20px; font-weight:800;">VIDAL DESIGN SOLUTIONS</h1>
+                                <p style="margin:2px 0 0 0; color:#64748b; font-size:12px;">Comunicação Visual, Sinalização, Toldos e Impressão Digital</p>
+                                <p style="margin:2px 0 0 0; color:#64748b; font-size:12px;">Mogi das Cruzes - SP | Tel/WhatsApp: (11) 96864-9673</p>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:13px; font-weight:800; color:#ea580c;">ORÇAMENTO / PEDIDO</div>
+                            <div style="font-size:18px; font-weight:800; color:#0f172a;">${order.order_code}</div>
+                            <div style="font-size:11px; color:#94a3b8;">Data: ${new Date().toLocaleString('pt-BR')}</div>
+                        </div>
+                    </div>
 
-        <div style="margin-top: 35px; border-top: 1px solid #e2e8f0; padding-top: 10px; font-size: 11px; color: #94a3b8; text-align: center;">
-            Documento emitido pelo Portal V2 da Vidal Design Solutions.
-        </div>
-    `;
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:15px; margin-bottom:20px; font-size:13px;">
+                        <div>
+                            <strong>CLIENTE:</strong> ${currentProfile?.full_name || 'Cliente'}<br>
+                            <strong>E-MAIL:</strong> ${currentProfile?.email || '-'}<br>
+                            <strong>TELEFONE:</strong> ${currentProfile?.phone || '-'}
+                        </div>
+                        <div>
+                            <strong>RECEBIMENTO:</strong> ${order.delivery_type.toUpperCase()}<br>
+                            <strong>CANAL:</strong> ${canal.toUpperCase()}<br>
+                            <strong>STATUS:</strong> <span style="font-weight:bold; color:#16a34a;">RECEBIDO</span>
+                        </div>
+                    </div>
 
-    const opt = {
-        margin: 10,
-        filename: `Pedido_${order.order_code.replace('#', '')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    <h3 style="font-size:14px; text-transform:uppercase; margin-bottom:10px; color:#0f172a;">Itens do Pedido:</h3>
+                    <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:20px;">
+                        <thead>
+                            <tr style="background:#0f172a; color:#fff;">
+                                <th style="padding:8px; text-align:left;">#</th>
+                                <th style="padding:8px; text-align:left;">Descrição da Peça</th>
+                                <th style="padding:8px; text-align:center;">Qtd</th>
+                                <th style="padding:8px; text-align:right;">Unitário</th>
+                                <th style="padding:8px; text-align:right;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:25px;">
+                        <div style="width:280px; background:#fff7ed; padding:15px; border-radius:8px; border-left:4px solid #f97316; font-size:13px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                <span>Subtotal:</span>
+                                <strong>${Number(order.subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                <span>Taxa de Arte:</span>
+                                <strong>${Number(order.art_fee).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:16px; font-weight:bold; color:#c2410c; border-top:1px solid #fed7aa; padding-top:6px;">
+                                <span>VALOR TOTAL:</span>
+                                <span>${Number(order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid #e2e8f0; padding-top:15px; font-size:11px; color:#64748b; text-align:center;">
+                        Documento emitido oficialmente pela Vidal Design Solutions.<br>
+                        Mogi das Cruzes - SP | (11) 96864-9673
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => { printWindow.print(); }, 400);
     };
-
-    window.html2pdf().set(opt).from(element).save();
 }
