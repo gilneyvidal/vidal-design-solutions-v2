@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/admin.js
-// OBJETIVO: Gestão Master: Triagem Unificada de Todos os Leads e Gravação Garantida
+// OBJETIVO: Gestão Master: Produção aberta para Equipe e Pagamento Blindado
 // ==============================================================================
 
 let currentMasterUser = null;
@@ -96,14 +96,14 @@ async function loadOrders() {
         if (error) throw error;
         allOrders = data || [];
         renderOrdersTable(allOrders);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error('Erro ao buscar pedidos:', err); }
 }
 
 function renderOrdersTable(orders) {
     const tbody = document.getElementById('admin-orders-tbody');
     if (!tbody) return;
     if (!orders.length) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">Nenhum pedido registrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#64748b;">Nenhum pedido registrado.</td></tr>';
         return;
     }
     tbody.innerHTML = '';
@@ -113,6 +113,22 @@ function renderOrdersTable(orders) {
         const clientName = order.user?.full_name || 'Cliente';
         const clientContact = order.user?.phone || order.user?.email || '-';
         const tr = document.createElement('tr');
+
+        // Status de pagamento: exclusivo do Master (Vendedor e Gerente só visualizam)
+        let paymentHTML = '';
+        if (isMaster) {
+            paymentHTML = `
+                <select class="status-select" onchange="updatePaymentStatus('${order.id}', this.value)" style="border-color:#10b981; color:#047857;">
+                    <option value="pendente" ${order.payment_status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                    <option value="aprovado" ${order.payment_status === 'aprovado' ? 'selected' : ''}>✓ Aprovado</option>
+                    <option value="recusado" ${order.payment_status === 'recusado' ? 'selected' : ''}>✕ Recusado</option>
+                </select>
+            `;
+        } else {
+            const payColor = order.payment_status === 'aprovado' ? '#16a34a' : '#ea580c';
+            paymentHTML = `<strong style="color:${payColor};">${(order.payment_status || 'pendente').toUpperCase()}</strong>`;
+        }
+
         tr.innerHTML = `
             <td><strong>${order.order_code}</strong></td>
             <td>${new Date(order.created_at).toLocaleDateString('pt-BR')}</td>
@@ -120,7 +136,8 @@ function renderOrdersTable(orders) {
             <td><span class="role-badge ${order.user_role}">${order.user_role.toUpperCase()}</span></td>
             <td><strong>${Number(order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
             <td>
-                <select class="status-select" onchange="updateOrderStatus('${order.id}', this.value)">
+                <!-- Status da Produção: Equipe pode alterar -->
+                <select class="status-select" onchange="updateProductionStatus('${order.id}', this.value)">
                     <option value="recebido" ${order.status === 'recebido' ? 'selected' : ''}>Recebido</option>
                     <option value="aprovado" ${order.status === 'aprovado' ? 'selected' : ''}>Aprovado</option>
                     <option value="produzindo" ${order.status === 'produzindo' ? 'selected' : ''}>Produzindo</option>
@@ -129,6 +146,7 @@ function renderOrdersTable(orders) {
                     <option value="cancelado" ${order.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
                 </select>
             </td>
+            <td>${paymentHTML}</td>
             <td>
                 <button class="btn-action-view" onclick="viewOrderDetails('${order.id}')">Ver Detalhes</button>
                 ${isMaster ? `<button class="btn-action-delete" onclick="deleteOrder('${order.id}', '${order.order_code}')" title="Excluir Pedido">✕</button>` : ''}
@@ -137,6 +155,24 @@ function renderOrdersTable(orders) {
         tbody.appendChild(tr);
     });
 }
+
+// Alteração de Produção pela Equipe
+window.updateProductionStatus = async function(orderId, newStatus) {
+    try {
+        const { error } = await window.supabaseClient.from('v2_orders').update({ status: newStatus }).eq('id', orderId);
+        if (error) throw error;
+        alert(`Status de produção alterado para ${newStatus.toUpperCase()}`);
+    } catch (err) { alert('Erro ao atualizar produção: ' + err.message); }
+};
+
+// Alteração de Pagamento Exclusiva do Master
+window.updatePaymentStatus = async function(orderId, newPaymentStatus) {
+    try {
+        const { error } = await window.supabaseClient.from('v2_orders').update({ payment_status: newPaymentStatus }).eq('id', orderId);
+        if (error) throw error;
+        alert(`Pagamento alterado para ${newPaymentStatus.toUpperCase()}`);
+    } catch (err) { alert('Erro: ' + err.message); }
+};
 
 window.deleteOrder = async function(orderId, orderCode) {
     if (!confirm(`Deseja realmente EXCLUIR permanentemente o pedido ${orderCode}?`)) return;
@@ -205,8 +241,9 @@ window.viewOrderDetails = function(orderId) {
             </div>
             <div>
                 <strong>Forma de Recebimento:</strong> ${addressHTML}<br>
-                <strong>Canal de Fechamento:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
-                <strong>Status Atual:</strong> <strong style="color: #ea580c;">${order.status.toUpperCase()}</strong>
+                <strong>Canal:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
+                <strong>Produção:</strong> <strong style="color: #ea580c;">${order.status.toUpperCase()}</strong><br>
+                <strong>Pagamento:</strong> <strong style="color: #16a34a;">${(order.payment_status || 'pendente').toUpperCase()}</strong>
             </div>
         </div>
 
@@ -331,7 +368,8 @@ function generateDocumentHTML(order) {
                     <div>
                         <strong>RECEBIMENTO:</strong> ${addressStr}<br>
                         <strong>CANAL:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
-                        <strong>STATUS:</strong> <span style="font-weight: bold; color: #16a34a;">${order.status.toUpperCase()}</span>
+                        <strong>PRODUÇÃO:</strong> <span style="font-weight: bold; color: #16a34a;">${order.status.toUpperCase()}</span><br>
+                        <strong>PAGAMENTO:</strong> <span style="font-weight: bold; color: #0284c7;">${(order.payment_status || 'pendente').toUpperCase()}</span>
                     </div>
                 </div>
 
@@ -376,14 +414,7 @@ function generateDocumentHTML(order) {
     `;
 }
 
-window.updateOrderStatus = async function(orderId, newStatus) {
-    try {
-        await window.supabaseClient.from('v2_orders').update({ status: newStatus }).eq('id', orderId);
-        alert(`Status alterado para ${newStatus.toUpperCase()}`);
-    } catch (err) { alert('Erro ao atualizar status.'); }
-};
-
-// 2. Triagem Unificada (Mostra TODOS os usuários e leads pendentes)
+// 2. Gestão de Usuários e Triagem Unificada
 async function loadUsersAndResellers() {
     const resellerTbody = document.getElementById('admin-resellers-tbody');
     const usersTbody = document.getElementById('admin-users-tbody');
@@ -392,17 +423,17 @@ async function loadUsersAndResellers() {
         if (error) throw error;
         allUsers = data || [];
 
-        // MOSTRA TODOS QUE ESTÃO PENDENTES (Tanto Revenda quanto Cliente Final)
+        // Fila de triagem com TODOS os leads pendentes
         const allPending = allUsers.filter(u => u.status === 'pendente');
         renderPendingLeadsTable(resellerTbody, allPending);
         renderUsersTable(usersTbody, allUsers);
-    } catch (err) { console.error('Erro ao carregar usuários:', err); }
+    } catch (err) { console.error(err); }
 }
 
 function renderPendingLeadsTable(tbody, list) {
     if (!tbody) return;
     if (!list.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#64748b;">Nenhum cadastro ou solicitação pendente no momento.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#64748b;">Nenhum cadastro pendente de triagem.</td></tr>';
         return;
     }
 
@@ -417,12 +448,12 @@ function renderPendingLeadsTable(tbody, list) {
             <td>${user.phone || 'Não informado'}<br><small style="color:#64748b;">${user.address?.cidade || ''}</small></td>
             <td>
                 <span class="role-badge ${isRevenda ? 'revenda' : 'cliente_final'}">${modalidadeSolicitada}</span><br>
-                <small>${user.notes || 'Aguardando aprovação'}</small>
+                <small>${user.notes || 'Aguardando liberação'}</small>
             </td>
             <td>
                 <button class="btn-approve" onclick="approveLeadAs('${user.id}', 'revenda')">✓ Aprovar Revenda</button>
                 <button class="btn-action-view" onclick="approveLeadAs('${user.id}', 'cliente_final')" style="background:#0284c7; padding:6px 10px; font-size:12px; margin-left:4px;">✓ Aprovar Cliente Final</button>
-                <button class="btn-reject" onclick="deleteUserAccount('${user.id}', '${user.full_name || user.email}')" style="margin-left:4px;">✕</button>
+                <button class="btn-action-delete" onclick="deleteUserAccount('${user.id}', '${user.full_name || user.email}')" style="margin-left:4px;">✕</button>
             </td>
         `;
         tbody.appendChild(tr);
@@ -431,7 +462,7 @@ function renderPendingLeadsTable(tbody, list) {
 
 window.approveLeadAs = async function(userId, targetRole) {
     const roleName = targetRole === 'revenda' ? 'REVENDA AUTORIZADA' : 'CLIENTE FINAL';
-    if (!confirm(`Confirma aprovar este usuário como ${roleName}?`)) return;
+    if (!confirm(`Confirma aprovar este cadastro como ${roleName}?`)) return;
 
     try {
         const { error } = await window.supabaseClient.from('v2_profiles').update({
@@ -443,7 +474,7 @@ window.approveLeadAs = async function(userId, targetRole) {
 
         if (error) throw error;
 
-        // Se tiver comprovante e foi aprovado, descarta do bucket conforme LGPD
+        // Descarte do comprovante pós-aprovação (LGPD)
         try {
             const { data: files } = await window.supabaseClient.storage.from('reseller-proofs').list('solicitacoes');
             const userFiles = files?.filter(f => f.name.startsWith(userId)) || [];
@@ -452,11 +483,9 @@ window.approveLeadAs = async function(userId, targetRole) {
             }
         } catch (e) {}
 
-        alert(`Usuário aprovado com sucesso como ${roleName}!`);
+        alert(`Usuário liberado como ${roleName}!`);
         await loadUsersAndResellers();
-    } catch (err) {
-        alert('Erro ao aprovar: ' + err.message);
-    }
+    } catch (err) { alert('Erro: ' + err.message); }
 };
 
 function renderUsersTable(tbody, list) {
@@ -508,11 +537,9 @@ window.quickUpdateUserRole = async function(userId, newRole) {
         }).eq('id', userId);
 
         if (error) throw error;
-        alert('Cargo atualizado com sucesso no banco!');
+        alert('Cargo atualizado no banco de dados!');
         await loadUsersAndResellers();
-    } catch (err) {
-        alert('Erro ao atualizar cargo: ' + err.message);
-    }
+    } catch (err) { alert('Erro ao atualizar cargo: ' + err.message); }
 };
 
 window.quickUpdateUserStatus = async function(userId, newStatus) {
@@ -525,9 +552,7 @@ window.quickUpdateUserStatus = async function(userId, newStatus) {
         if (error) throw error;
         alert(`Status alterado para ${newStatus.toUpperCase()}!`);
         await loadUsersAndResellers();
-    } catch (err) {
-        alert('Erro ao atualizar status: ' + err.message);
-    }
+    } catch (err) { alert('Erro ao atualizar status: ' + err.message); }
 };
 
 window.openNewUserModal = function() { document.getElementById('modal-new-user').style.display = 'flex'; };
@@ -536,7 +561,7 @@ window.deleteUserAccount = async function(userId, userName) {
     if (!confirm(`Deseja realmente EXCLUIR o usuário "${userName}"?`)) return;
     try {
         await window.supabaseClient.from('v2_profiles').delete().eq('id', userId);
-        alert('Usuário excluído com sucesso!');
+        alert('Usuário excluído!');
         await loadUsersAndResellers();
     } catch (err) { alert('Erro: ' + err.message); }
 };
@@ -746,7 +771,6 @@ function initAdminEventListeners() {
 
     document.getElementById('form-global-settings')?.addEventListener('submit', saveGlobalSettings);
 
-    // Salva no banco com tratamento de erro e ID único
     document.getElementById('form-create-user-manual')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('user-new-name').value;
