@@ -1,36 +1,57 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/admin.js
-// OBJETIVO: Gestão Master: Exclusões, Ficha do Pedido, Edição de Usuários e Regras
+// OBJETIVO: Gestão Master e Controle de Níveis de Acesso (Master, Gerente, Vendedor)
 // ==============================================================================
 
 let currentMasterUser = null;
+let currentProfile = null;
 let allOrders = [];
 let allUsers = [];
 let allProducts = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await verifyMasterAccess();
+    await verifyAdminAccess();
     initTabNavigation();
     await loadDashboardData();
     initAdminEventListeners();
 });
 
-async function verifyMasterAccess() {
+// Verificação de Acesso e Aplicação de Níveis de Permissão
+async function verifyAdminAccess() {
     if (!window.AuthController) return;
     currentMasterUser = await window.AuthController.getCurrentUser();
     if (!currentMasterUser) {
-        alert('Acesso restrito. Faça login como administrador.');
+        alert('Acesso restrito. Faça login com seu e-mail autorizado.');
         window.location.href = '../index.html';
         return;
     }
-    const profile = await window.AuthController.getUserProfile(currentMasterUser.id);
-    if (!profile || profile.role !== 'master') {
-        alert('Acesso restrito para o Administrador Master.');
-        window.location.href = '../index.html';
+
+    currentProfile = await window.AuthController.getUserProfile(currentMasterUser.id);
+    const role = currentProfile ? currentProfile.role : 'cliente_final';
+
+    // Se for cliente comum ou revenda, manda para a Área do Cliente
+    if (role !== 'master' && role !== 'gerente' && role !== 'vendedor') {
+        alert('Acesso negado. Redirecionando para a Área do Cliente.');
+        window.location.href = 'minha-conta.html';
         return;
     }
-    document.getElementById('admin-user-name').textContent = profile.full_name || 'Gilney Vidal';
+
+    document.getElementById('admin-user-name').textContent = currentProfile.full_name || 'Usuário';
+    document.getElementById('admin-user-role').textContent = role.toUpperCase();
+
+    // Aplicação de restrições por cargo
+    if (role === 'vendedor') {
+        // Vendedor só vê a aba de Pedidos
+        document.getElementById('menu-revendas').style.display = 'none';
+        document.getElementById('menu-produtos').style.display = 'none';
+        document.getElementById('menu-usuarios').style.display = 'none';
+        document.getElementById('menu-config').style.display = 'none';
+    } else if (role === 'gerente') {
+        // Gerente não altera configurações globais
+        document.getElementById('menu-config').style.display = 'none';
+        document.getElementById('form-new-product').style.display = 'none'; // Não cria produtos
+    }
 }
 
 function initTabNavigation() {
@@ -57,28 +78,20 @@ async function loadDashboardData() {
     ]);
 }
 
-// ==============================================================================
-// 1. GESTÃO DE PEDIDOS & EXCLUSÃO
-// ==============================================================================
+// 1. Pedidos
 async function loadOrders() {
     const tbody = document.getElementById('admin-orders-tbody');
     if (!tbody) return;
     try {
         const { data, error } = await window.supabaseClient
             .from('v2_orders')
-            .select(`
-                *,
-                user:v2_profiles(full_name, email, phone, address),
-                items:v2_order_items(*)
-            `)
+            .select(`*, user:v2_profiles(full_name, email, phone, address), items:v2_order_items(*)`)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
         allOrders = data || [];
         renderOrdersTable(allOrders);
-    } catch (err) {
-        console.error('Erro ao buscar pedidos:', err);
-    }
+    } catch (err) { console.error(err); }
 }
 
 function renderOrdersTable(orders) {
@@ -89,6 +102,8 @@ function renderOrdersTable(orders) {
         return;
     }
     tbody.innerHTML = '';
+    const isMaster = currentProfile?.role === 'master';
+
     orders.forEach(order => {
         const clientName = order.user?.full_name || 'Cliente';
         const clientContact = order.user?.phone || order.user?.email || '-';
@@ -111,27 +126,22 @@ function renderOrdersTable(orders) {
             </td>
             <td>
                 <button class="btn-action-view" onclick="viewOrderDetails('${order.id}')">Ver Detalhes</button>
-                <button class="btn-action-delete" onclick="deleteOrder('${order.id}', '${order.order_code}')" title="Excluir Pedido">✕</button>
+                ${isMaster ? `<button class="btn-action-delete" onclick="deleteOrder('${order.id}', '${order.order_code}')" title="Excluir Pedido">✕</button>` : ''}
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-// Excluir Pedido
 window.deleteOrder = async function(orderId, orderCode) {
-    if (!confirm(`Tem certeza que deseja EXCLUIR permanentemente o pedido ${orderCode}?`)) return;
+    if (!confirm(`Deseja realmente EXCLUIR permanentemente o pedido ${orderCode}?`)) return;
     try {
-        const { error } = await window.supabaseClient.from('v2_orders').delete().eq('id', orderId);
-        if (error) throw error;
+        await window.supabaseClient.from('v2_orders').delete().eq('id', orderId);
         alert(`Pedido ${orderCode} excluído!`);
         await loadOrders();
-    } catch (err) {
-        alert('Erro ao excluir pedido: ' + err.message);
-    }
+    } catch (err) { alert('Erro: ' + err.message); }
 };
 
-// Modal Ficha Completa
 window.viewOrderDetails = function(orderId) {
     const order = allOrders.find(o => o.id === orderId);
     if (!order) return;
@@ -145,12 +155,12 @@ window.viewOrderDetails = function(orderId) {
     const clientPhone = order.user?.phone || '-';
 
     const items = order.items && order.items.length > 0 ? order.items : [
-        { product_name: 'Material de Comunicação Visual', quantity: 1, unit_price: order.subtotal || order.total, item_total: order.total }
+        { product_name: 'Material Gráfico / Comunicação Visual', quantity: 1, unit_price: order.subtotal || order.total, item_total: order.total }
     ];
 
-    let itemsRows = '';
+    let itemsHTML = '';
     items.forEach((it, idx) => {
-        itemsRows += `
+        itemsHTML += `
             <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td style="padding: 10px;">${idx + 1}</td>
                 <td style="padding: 10px;"><strong>${it.product_name}</strong></td>
@@ -173,9 +183,7 @@ window.viewOrderDetails = function(orderId) {
                 <h2 style="margin: 0; color: #0f172a; font-size: 22px;">Pedido ${order.order_code}</h2>
                 <small style="color: #64748b;">Registrado em: ${new Date(order.created_at).toLocaleString('pt-BR')}</small>
             </div>
-            <div>
-                <span class="role-badge ${order.user_role}" style="font-size: 13px; padding: 6px 12px;">${order.user_role.toUpperCase()}</span>
-            </div>
+            <div><span class="role-badge ${order.user_role}" style="font-size: 13px; padding: 6px 12px;">${order.user_role.toUpperCase()}</span></div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #f8fafc; padding: 18px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
@@ -185,8 +193,8 @@ window.viewOrderDetails = function(orderId) {
                 <strong>Telefone:</strong> ${clientPhone}
             </div>
             <div>
-                <strong>Recebimento:</strong> ${addressHTML}<br>
-                <strong>Canal:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
+                <strong>Forma de Recebimento:</strong> ${addressHTML}<br>
+                <strong>Canal de Fechamento:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
                 <strong>Status Atual:</strong> <strong style="color: #ea580c;">${order.status.toUpperCase()}</strong>
             </div>
         </div>
@@ -202,9 +210,7 @@ window.viewOrderDetails = function(orderId) {
                     <th style="padding: 8px; text-align: right;">Total</th>
                 </tr>
             </thead>
-            <tbody>
-                ${itemsRows}
-            </tbody>
+            <tbody>${itemsHTML}</tbody>
         </table>
 
         <div style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
@@ -235,7 +241,6 @@ window.viewOrderDetails = function(orderId) {
     modal.style.display = 'flex';
 };
 
-// Emissão de PDF A4 Nativa de Alta Resolução com Logo
 window.printOrderNative = function(orderId) {
     const order = allOrders.find(o => o.id === orderId);
     if (!order) return;
@@ -244,9 +249,7 @@ window.printOrderNative = function(orderId) {
     printWindow.document.write(generateDocumentHTML(order));
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-        printWindow.print();
-    }, 400);
+    setTimeout(() => { printWindow.print(); }, 400);
 };
 
 function generateDocumentHTML(order) {
@@ -291,7 +294,6 @@ function generateDocumentHTML(order) {
         </head>
         <body>
             <div class="doc-box">
-                <!-- Cabeçalho Oficial -->
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f97316; padding-bottom: 15px; margin-bottom: 25px;">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <img src="../logo_cabecalho.png" style="height: 55px; max-width: 220px; object-fit: contain;" onerror="this.src='../logo.png'">
@@ -308,7 +310,6 @@ function generateDocumentHTML(order) {
                     </div>
                 </div>
 
-                <!-- Dados do Cliente -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 13px;">
                     <div>
                         <strong>CLIENTE:</strong> ${clientName}<br>
@@ -323,7 +324,6 @@ function generateDocumentHTML(order) {
                     </div>
                 </div>
 
-                <!-- Tabela de Itens -->
                 <h3 style="font-size: 14px; text-transform: uppercase; margin-bottom: 10px; color: #0f172a;">Itens & Especificações Técnicas:</h3>
                 <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
                     <thead>
@@ -335,14 +335,11 @@ function generateDocumentHTML(order) {
                             <th style="padding: 8px; text-align: right; border: 1px solid #0f172a;">Total</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${itemsRows}
-                    </tbody>
+                    <tbody>${itemsRows}</tbody>
                 </table>
 
-                <!-- Resumo -->
                 <div style="display: flex; justify-content: flex-end; margin-bottom: 25px;">
-                    <div style="width: 280px; background: #fff7ed; padding: 15px; border-radius: 8px; border-left: 4px solid #f97316; font-size: 13px;">
+                    <div style="width: 280px; background: #fff7ed; padding: 16px; border-radius: 8px; border-left: 4px solid #f97316; font-size: 13px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                             <span>Subtotal:</span>
                             <strong>${Number(order.subtotal || order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
@@ -352,7 +349,7 @@ function generateDocumentHTML(order) {
                             <strong>${Number(order.art_fee || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; color: #c2410c; border-top: 1px solid #fed7aa; padding-top: 6px;">
-                            <span>TOTAL DO PEDIDO:</span>
+                            <span>VALOR TOTAL:</span>
                             <span>${Number(order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                         </div>
                     </div>
@@ -375,9 +372,7 @@ window.updateOrderStatus = async function(orderId, newStatus) {
     } catch (err) { alert('Erro ao atualizar status.'); }
 };
 
-// ==============================================================================
-// 2. TRIAGEM DE REVENDA E LGPD
-// ==============================================================================
+// 2. Triagem e Gestão de Usuários
 async function loadUsersAndResellers() {
     const resellerTbody = document.getElementById('admin-resellers-tbody');
     const usersTbody = document.getElementById('admin-users-tbody');
@@ -417,43 +412,55 @@ function renderResellersTable(tbody, list) {
 function renderUsersTable(tbody, list) {
     if (!tbody) return;
     tbody.innerHTML = '';
+    const isMaster = currentProfile?.role === 'master';
+
     list.forEach(u => {
         const tr = document.createElement('tr');
+        let roleBadgeColor = 'cliente_final';
+        if (u.role === 'revenda') roleBadgeColor = 'revenda';
+        else if (u.role === 'vendedor') roleBadgeColor = 'vendedor';
+        else if (u.role === 'gerente') roleBadgeColor = 'gerente';
+        else if (u.role === 'master') roleBadgeColor = 'master';
+
         tr.innerHTML = `
             <td>${u.full_name || 'Sem nome'}</td>
             <td>${u.email}</td>
-            <td><span class="role-badge ${u.role}">${u.role.toUpperCase()}</span></td>
+            <td><span class="role-badge ${roleBadgeColor}">${u.role.toUpperCase()}</span></td>
             <td><strong>${u.status.toUpperCase()}</strong></td>
             <td>
-                ${u.role !== 'master' ? `
-                    <button class="btn-action-view" onclick="editUserRole('${u.id}', '${u.role}')" style="padding:4px 8px; font-size:11px;">Mudar Modalidade</button>
+                ${(isMaster && u.role !== 'master') ? `
+                    <button class="btn-action-view" onclick="changeUserRolePrompt('${u.id}', '${u.role}')" style="padding:4px 8px; font-size:11px;">Alterar Cargo</button>
                     <button class="btn-action-delete" onclick="deleteUserAccount('${u.id}', '${u.full_name || u.email}')" title="Excluir Usuário">✕</button>
-                ` : '<em>Master Oficial</em>'}
+                ` : '<em>Acesso Protegido</em>'}
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-window.openNewUserModal = function() {
-    document.getElementById('modal-new-user').style.display = 'flex';
+window.openNewUserModal = function() { document.getElementById('modal-new-user').style.display = 'flex'; };
+
+window.changeUserRolePrompt = async function(userId, currentRole) {
+    const newRole = prompt(`Digite o novo cargo para este usuário:\n- cliente_final\n- revenda\n- vendedor\n- gerente`, currentRole);
+    if (!newRole || newRole === currentRole) return;
+    
+    if (!['cliente_final', 'revenda', 'vendedor', 'gerente'].includes(newRole)) {
+        alert('Cargo inválido. Escolha: cliente_final, revenda, vendedor ou gerente.');
+        return;
+    }
+
+    await window.supabaseClient.from('v2_profiles').update({ role: newRole, requested_role: newRole }).eq('id', userId);
+    alert('Cargo atualizado com sucesso!');
+    await loadUsersAndResellers();
 };
 
 window.deleteUserAccount = async function(userId, userName) {
     if (!confirm(`Deseja realmente EXCLUIR o usuário "${userName}" do sistema?`)) return;
     try {
-        const { error } = await window.supabaseClient.from('v2_profiles').delete().eq('id', userId);
-        if (error) throw error;
+        await window.supabaseClient.from('v2_profiles').delete().eq('id', userId);
         alert('Usuário excluído!');
         await loadUsersAndResellers();
     } catch (err) { alert('Erro: ' + err.message); }
-};
-
-window.editUserRole = async function(userId, currentRole) {
-    const targetRole = currentRole === 'revenda' ? 'cliente_final' : 'revenda';
-    if (!confirm(`Deseja alterar a modalidade deste usuário para ${targetRole.toUpperCase()}?`)) return;
-    await window.supabaseClient.from('v2_profiles').update({ role: targetRole, requested_role: targetRole }).eq('id', userId);
-    await loadUsersAndResellers();
 };
 
 window.decisionReseller = async function(userId, approved) {
@@ -464,7 +471,7 @@ window.decisionReseller = async function(userId, approved) {
             role: newRole,
             status: 'aprovado',
             requested_role: newRole,
-            notes: `Triagem concluída: ${approved ? 'Revenda Aprovada' : 'Cliente Final'}`
+            notes: `Triagem: ${approved ? 'Revenda Aprovada' : 'Cliente Final'}`
         }).eq('id', userId);
 
         try {
@@ -473,14 +480,12 @@ window.decisionReseller = async function(userId, approved) {
             if (userFile) await window.supabaseClient.storage.from('reseller-proofs').remove([`solicitacoes/${userFile.name}`]);
         } catch (e) {}
 
-        alert('Decisão gravada e arquivo descartado com sucesso!');
+        alert('Decisão gravada e documento descartado!');
         await loadUsersAndResellers();
     } catch (err) { alert('Erro: ' + err.message); }
 };
 
-// ==============================================================================
-// 3. CATÁLOGO & EXCLUSÃO DE PRODUTOS
-// ==============================================================================
+// 3. Catálogo & Produtos
 async function loadProductsList() {
     const tbody = document.getElementById('admin-products-tbody');
     if (!tbody) return;
@@ -496,6 +501,8 @@ function renderProductsTable(products) {
     const tbody = document.getElementById('admin-products-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
+    const isMaster = currentProfile?.role === 'master';
+
     products.forEach(p => {
         const cost = Number(p.base_cost) || 0;
         const revenda = cost * 1.5;
@@ -509,8 +516,10 @@ function renderProductsTable(products) {
             <td><span style="color:#c2410c; font-weight:700;">${cliente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (+100%)</span></td>
             <td>${p.is_active ? '✅ Ativo' : '❌ Inativo'}</td>
             <td>
-                <button class="btn-action-view" onclick="editProduct('${p.id}')" style="padding:4px 8px; font-size:11px;">Editar</button>
-                <button class="btn-action-delete" onclick="deleteProduct('${p.id}', '${p.name}')" title="Excluir Produto">✕</button>
+                ${isMaster ? `
+                    <button class="btn-action-view" onclick="editProduct('${p.id}')" style="padding:4px 8px; font-size:11px;">Editar</button>
+                    <button class="btn-action-delete" onclick="deleteProduct('${p.id}', '${p.name}')" title="Excluir Produto">✕</button>
+                ` : '<em>Somente Leitura</em>'}
             </td>
         `;
         tbody.appendChild(tr);
@@ -520,8 +529,7 @@ function renderProductsTable(products) {
 window.deleteProduct = async function(prodId, prodName) {
     if (!confirm(`Deseja realmente EXCLUIR o produto "${prodName}" do catálogo?`)) return;
     try {
-        const { error } = await window.supabaseClient.from('v2_products').delete().eq('id', prodId);
-        if (error) throw error;
+        await window.supabaseClient.from('v2_products').delete().eq('id', prodId);
         alert(`Produto "${prodName}" excluído!`);
         await loadProductsList();
     } catch (err) { alert('Erro ao excluir: ' + err.message); }
@@ -631,9 +639,7 @@ async function saveProduct(formData) {
     } catch (err) { alert('Erro ao salvar: ' + err.message); }
 }
 
-// ==============================================================================
-// 4. CONFIGURAÇÕES GLOBAIS (COM SALVAMENTO REAL)
-// ==============================================================================
+// 4. Regras Globais
 async function loadSettings() {
     try {
         const { data } = await window.supabaseClient.from('v2_settings').select('*').eq('id', 'global').single();
@@ -656,23 +662,18 @@ async function saveGlobalSettings(e) {
     const whatsApp = document.getElementById('cfg-whatsapp').value;
 
     try {
-        const { error } = await window.supabaseClient
-            .from('v2_settings')
-            .update({
-                reseller_margin: resMargin,
-                retail_margin: retMargin,
-                art_fee: artFee,
-                min_area_sqm: minArea,
-                whatsapp_number: whatsApp,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', 'global');
+        const { error } = await window.supabaseClient.from('v2_settings').update({
+            reseller_margin: resMargin,
+            retail_margin: retMargin,
+            art_fee: artFee,
+            min_area_sqm: minArea,
+            whatsapp_number: whatsApp,
+            updated_at: new Date().toISOString()
+        }).eq('id', 'global');
 
         if (error) throw error;
         alert('Regras Globais salvas com sucesso no banco de dados!');
-    } catch (err) {
-        alert('Erro ao salvar configurações: ' + err.message);
-    }
+    } catch (err) { alert('Erro: ' + err.message); }
 }
 
 function initAdminEventListeners() {
@@ -698,7 +699,7 @@ function initAdminEventListeners() {
         const status = document.getElementById('user-new-status').value;
 
         try {
-            const { error } = await window.supabaseClient.from('v2_profiles').insert({
+            await window.supabaseClient.from('v2_profiles').insert({
                 id: crypto.randomUUID(),
                 email: email,
                 full_name: name,
@@ -707,8 +708,7 @@ function initAdminEventListeners() {
                 status: status,
                 requested_role: role
             });
-            if (error) throw error;
-            alert('Usuário cadastrado com sucesso!');
+            alert('Membro cadastrado com sucesso! Quando ele logar com o Google deste e-mail, o sistema reconhecerá o cargo automaticamente.');
             document.getElementById('modal-new-user').style.display = 'none';
             await loadUsersAndResellers();
         } catch (err) { alert('Erro: ' + err.message); }
