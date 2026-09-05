@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/admin.js
-// OBJETIVO: Gestão Master com Alteração Instantânea de Cargo e Status por Dropdown
+// OBJETIVO: Gestão Master sem Exposição de Margens e Correção de Cargos de Equipe
 // ==============================================================================
 
 let currentMasterUser = null;
@@ -36,7 +36,7 @@ async function verifyAdminAccess() {
     const role = currentProfile ? currentProfile.role : 'cliente_final';
 
     if (role !== 'master' && role !== 'gerente' && role !== 'vendedor') {
-        alert('Acesso negado. Redirecionando para a Área do Cliente.');
+        alert('Acesso restrito. Redirecionando para a Área do Cliente.');
         window.location.href = 'minha-conta.html';
         return;
     }
@@ -199,12 +199,12 @@ window.viewOrderDetails = function(orderId) {
             </div>
             <div>
                 <strong>Forma de Recebimento:</strong> ${addressHTML}<br>
-                <strong>Canal de Fechamento:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
+                <strong>Canal:</strong> ${order.payment_method ? order.payment_method.toUpperCase() : 'WHATSAPP'}<br>
                 <strong>Status Atual:</strong> <strong style="color: #ea580c;">${order.status.toUpperCase()}</strong>
             </div>
         </div>
 
-        <h3 style="font-size: 15px; margin-bottom: 10px; color: #0f172a;">Itens & Especificações:</h3>
+        <h3 style="font-size: 15px; margin-bottom: 10px; color: #0f172a;">Itens do Pedido:</h3>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;">
             <thead>
                 <tr style="background: #0f172a; color: #fff;">
@@ -377,7 +377,7 @@ window.updateOrderStatus = async function(orderId, newStatus) {
     } catch (err) { alert('Erro ao atualizar status.'); }
 };
 
-// 2. Gestão de Usuários (Alteração Instantânea por Dropdowns)
+// 2. Gestão de Usuários (Correção da Trava e Dropdowns Diretos)
 async function loadUsersAndResellers() {
     const resellerTbody = document.getElementById('admin-resellers-tbody');
     const usersTbody = document.getElementById('admin-users-tbody');
@@ -430,7 +430,7 @@ function renderUsersTable(tbody, list) {
                 ${isSelfMaster ? '<span class="role-badge master">MASTER</span>' : `
                     <select class="status-select" onchange="quickUpdateUserRole('${u.id}', this.value)">
                         <option value="cliente_final" ${u.role === 'cliente_final' ? 'selected' : ''}>Cliente Final</option>
-                        <option value="revenda" ${u.role === 'revenda' ? 'selected' : ''}>Revenda (50%)</option>
+                        <option value="revenda" ${u.role === 'revenda' ? 'selected' : ''}>Revenda Autorizada</option>
                         <option value="vendedor" ${u.role === 'vendedor' ? 'selected' : ''}>Vendedor / Produção</option>
                         <option value="gerente" ${u.role === 'gerente' ? 'selected' : ''}>Gerente</option>
                     </select>
@@ -455,12 +455,11 @@ function renderUsersTable(tbody, list) {
     });
 }
 
-// Alteração Instantânea de Cargo
+// Atualiza exclusivamente o cargo funcional (role), sem violar a constraint antiga
 window.quickUpdateUserRole = async function(userId, newRole) {
     try {
         const { error } = await window.supabaseClient.from('v2_profiles').update({
             role: newRole,
-            requested_role: newRole,
             updated_at: new Date().toISOString()
         }).eq('id', userId);
 
@@ -472,7 +471,6 @@ window.quickUpdateUserRole = async function(userId, newRole) {
     }
 };
 
-// Alteração Instantânea de Status
 window.quickUpdateUserStatus = async function(userId, newStatus) {
     try {
         const { error } = await window.supabaseClient.from('v2_profiles').update({
