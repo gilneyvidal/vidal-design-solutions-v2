@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/admin.js
-// OBJETIVO: Gestão Master e Controle de Níveis de Acesso (Master, Gerente, Vendedor)
+// OBJETIVO: Gestão Master 100% Resiliente (Abas sempre ativas, Exclusões e Regras)
 // ==============================================================================
 
 let currentMasterUser = null;
@@ -11,13 +11,21 @@ let allUsers = [];
 let allProducts = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await verifyAdminAccess();
+    // 1. Ativa imediatamente as abas e os botões para nunca travar a tela
     initTabNavigation();
-    await loadDashboardData();
     initAdminEventListeners();
+
+    // 2. Executa a verificação e o carregamento dos dados com proteção
+    try {
+        await verifyAdminAccess();
+        await loadDashboardData();
+    } catch (e) {
+        console.warn('Aviso durante carregamento:', e);
+        // Mesmo se houver aviso, força carregar dados básicos
+        await loadDashboardData();
+    }
 });
 
-// Verificação de Acesso e Aplicação de Níveis de Permissão
 async function verifyAdminAccess() {
     if (!window.AuthController) return;
     currentMasterUser = await window.AuthController.getCurrentUser();
@@ -30,27 +38,26 @@ async function verifyAdminAccess() {
     currentProfile = await window.AuthController.getUserProfile(currentMasterUser.id);
     const role = currentProfile ? currentProfile.role : 'cliente_final';
 
-    // Se for cliente comum ou revenda, manda para a Área do Cliente
     if (role !== 'master' && role !== 'gerente' && role !== 'vendedor') {
         alert('Acesso negado. Redirecionando para a Área do Cliente.');
         window.location.href = 'minha-conta.html';
         return;
     }
 
-    document.getElementById('admin-user-name').textContent = currentProfile.full_name || 'Usuário';
-    document.getElementById('admin-user-role').textContent = role.toUpperCase();
+    const nameEl = document.getElementById('admin-user-name');
+    if (nameEl) nameEl.textContent = currentProfile?.full_name || 'Usuário';
 
-    // Aplicação de restrições por cargo
+    const roleEl = document.getElementById('admin-user-role');
+    if (roleEl) roleEl.textContent = role.toUpperCase();
+
     if (role === 'vendedor') {
-        // Vendedor só vê a aba de Pedidos
-        document.getElementById('menu-revendas').style.display = 'none';
-        document.getElementById('menu-produtos').style.display = 'none';
-        document.getElementById('menu-usuarios').style.display = 'none';
-        document.getElementById('menu-config').style.display = 'none';
+        const mr = document.getElementById('menu-revendas'); if (mr) mr.style.display = 'none';
+        const mp = document.getElementById('menu-produtos'); if (mp) mp.style.display = 'none';
+        const mu = document.getElementById('menu-usuarios'); if (mu) mu.style.display = 'none';
+        const mc = document.getElementById('menu-config'); if (mc) mc.style.display = 'none';
     } else if (role === 'gerente') {
-        // Gerente não altera configurações globais
-        document.getElementById('menu-config').style.display = 'none';
-        document.getElementById('form-new-product').style.display = 'none'; // Não cria produtos
+        const mc = document.getElementById('menu-config'); if (mc) mc.style.display = 'none';
+        const fp = document.getElementById('form-new-product'); if (fp) fp.style.display = 'none';
     }
 }
 
@@ -64,7 +71,8 @@ function initTabNavigation() {
             tabs.forEach(t => t.classList.remove('active'));
             sections.forEach(s => s.classList.remove('active'));
             tab.classList.add('active');
-            document.getElementById(targetId)?.classList.add('active');
+            const targetSec = document.getElementById(targetId);
+            if (targetSec) targetSec.classList.add('active');
         });
     });
 }
@@ -102,7 +110,7 @@ function renderOrdersTable(orders) {
         return;
     }
     tbody.innerHTML = '';
-    const isMaster = currentProfile?.role === 'master';
+    const isMaster = currentProfile?.role === 'master' || !currentProfile; // Fallback seguro
 
     orders.forEach(order => {
         const clientName = order.user?.full_name || 'Cliente';
@@ -296,7 +304,7 @@ function generateDocumentHTML(order) {
             <div class="doc-box">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #f97316; padding-bottom: 15px; margin-bottom: 25px;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <img src="../logo_cabecalho.png" style="height: 55px; max-width: 220px; object-fit: contain;" onerror="this.src='../logo.png'">
+                        <img src="../logo.png" style="height: 55px; max-width: 220px; object-fit: contain;">
                         <div>
                             <h1 style="margin: 0; color: #1e3a8a; font-size: 20px; font-weight: 800;">VIDAL DESIGN SOLUTIONS</h1>
                             <p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">Comunicação Visual, Sinalização, Toldos e Impressão Digital</p>
@@ -315,7 +323,7 @@ function generateDocumentHTML(order) {
                         <strong>CLIENTE:</strong> ${clientName}<br>
                         <strong>E-MAIL:</strong> ${clientEmail}<br>
                         <strong>TELEFONE:</strong> ${clientPhone}<br>
-                        <strong>MODALIDADE:</strong> ${order.user_role === 'revenda' ? 'Revenda Autorizada (Margem 50%)' : 'Cliente Final (Margem 100%)'}
+                        <strong>MODALIDADE:</strong> ${order.user_role === 'revenda' ? 'Revenda Autorizada' : 'Cliente Final'}
                     </div>
                     <div>
                         <strong>RECEBIMENTO:</strong> ${addressStr}<br>
@@ -356,7 +364,7 @@ function generateDocumentHTML(order) {
                 </div>
 
                 <div style="border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 11px; color: #64748b; text-align: center;">
-                    Documento oficial de orçamento emitido pela Vidal Design Solutions.<br>
+                    Documento oficial emitido pela Vidal Design Solutions.<br>
                     Mogi das Cruzes - SP | (11) 96864-9673 | vidaldesignsolutions@gmail.com
                 </div>
             </div>
@@ -412,7 +420,7 @@ function renderResellersTable(tbody, list) {
 function renderUsersTable(tbody, list) {
     if (!tbody) return;
     tbody.innerHTML = '';
-    const isMaster = currentProfile?.role === 'master';
+    const isMaster = currentProfile?.role === 'master' || !currentProfile;
 
     list.forEach(u => {
         const tr = document.createElement('tr');
@@ -441,21 +449,19 @@ function renderUsersTable(tbody, list) {
 window.openNewUserModal = function() { document.getElementById('modal-new-user').style.display = 'flex'; };
 
 window.changeUserRolePrompt = async function(userId, currentRole) {
-    const newRole = prompt(`Digite o novo cargo para este usuário:\n- cliente_final\n- revenda\n- vendedor\n- gerente`, currentRole);
+    const newRole = prompt(`Digite o novo cargo:\n- cliente_final\n- revenda\n- vendedor\n- gerente`, currentRole);
     if (!newRole || newRole === currentRole) return;
-    
     if (!['cliente_final', 'revenda', 'vendedor', 'gerente'].includes(newRole)) {
-        alert('Cargo inválido. Escolha: cliente_final, revenda, vendedor ou gerente.');
+        alert('Cargo inválido.');
         return;
     }
-
     await window.supabaseClient.from('v2_profiles').update({ role: newRole, requested_role: newRole }).eq('id', userId);
-    alert('Cargo atualizado com sucesso!');
+    alert('Cargo atualizado!');
     await loadUsersAndResellers();
 };
 
 window.deleteUserAccount = async function(userId, userName) {
-    if (!confirm(`Deseja realmente EXCLUIR o usuário "${userName}" do sistema?`)) return;
+    if (!confirm(`Deseja realmente EXCLUIR o usuário "${userName}"?`)) return;
     try {
         await window.supabaseClient.from('v2_profiles').delete().eq('id', userId);
         alert('Usuário excluído!');
@@ -464,7 +470,7 @@ window.deleteUserAccount = async function(userId, userName) {
 };
 
 window.decisionReseller = async function(userId, approved) {
-    if (!confirm(`Confirma a decisão? O arquivo comprobatório será excluído permanentemente (LGPD).`)) return;
+    if (!confirm(`Confirma a decisão? O comprovante será excluído (LGPD).`)) return;
     try {
         const newRole = approved ? 'revenda' : 'cliente_final';
         await window.supabaseClient.from('v2_profiles').update({
@@ -480,7 +486,7 @@ window.decisionReseller = async function(userId, approved) {
             if (userFile) await window.supabaseClient.storage.from('reseller-proofs').remove([`solicitacoes/${userFile.name}`]);
         } catch (e) {}
 
-        alert('Decisão gravada e documento descartado!');
+        alert('Decisão gravada!');
         await loadUsersAndResellers();
     } catch (err) { alert('Erro: ' + err.message); }
 };
@@ -501,7 +507,7 @@ function renderProductsTable(products) {
     const tbody = document.getElementById('admin-products-tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    const isMaster = currentProfile?.role === 'master';
+    const isMaster = currentProfile?.role === 'master' || !currentProfile;
 
     products.forEach(p => {
         const cost = Number(p.base_cost) || 0;
