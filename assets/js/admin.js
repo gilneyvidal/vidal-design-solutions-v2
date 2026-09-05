@@ -1,7 +1,7 @@
 // ==============================================================================
 // PROJETO: Vidal Design Solutions V2
 // ARQUIVO: assets/js/admin.js
-// OBJETIVO: Gestão Master: Produção aberta para Equipe e Pagamento Blindado
+// OBJETIVO: Gestão Master com Gravação Segura do Access Token do Mercado Pago
 // ==============================================================================
 
 let currentMasterUser = null;
@@ -114,7 +114,6 @@ function renderOrdersTable(orders) {
         const clientContact = order.user?.phone || order.user?.email || '-';
         const tr = document.createElement('tr');
 
-        // Status de pagamento: exclusivo do Master (Vendedor e Gerente só visualizam)
         let paymentHTML = '';
         if (isMaster) {
             paymentHTML = `
@@ -136,7 +135,6 @@ function renderOrdersTable(orders) {
             <td><span class="role-badge ${order.user_role}">${order.user_role.toUpperCase()}</span></td>
             <td><strong>${Number(order.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong></td>
             <td>
-                <!-- Status da Produção: Equipe pode alterar -->
                 <select class="status-select" onchange="updateProductionStatus('${order.id}', this.value)">
                     <option value="recebido" ${order.status === 'recebido' ? 'selected' : ''}>Recebido</option>
                     <option value="aprovado" ${order.status === 'aprovado' ? 'selected' : ''}>Aprovado</option>
@@ -156,7 +154,6 @@ function renderOrdersTable(orders) {
     });
 }
 
-// Alteração de Produção pela Equipe
 window.updateProductionStatus = async function(orderId, newStatus) {
     try {
         const { error } = await window.supabaseClient.from('v2_orders').update({ status: newStatus }).eq('id', orderId);
@@ -165,7 +162,6 @@ window.updateProductionStatus = async function(orderId, newStatus) {
     } catch (err) { alert('Erro ao atualizar produção: ' + err.message); }
 };
 
-// Alteração de Pagamento Exclusiva do Master
 window.updatePaymentStatus = async function(orderId, newPaymentStatus) {
     try {
         const { error } = await window.supabaseClient.from('v2_orders').update({ payment_status: newPaymentStatus }).eq('id', orderId);
@@ -423,7 +419,6 @@ async function loadUsersAndResellers() {
         if (error) throw error;
         allUsers = data || [];
 
-        // Fila de triagem com TODOS os leads pendentes
         const allPending = allUsers.filter(u => u.status === 'pendente');
         renderPendingLeadsTable(resellerTbody, allPending);
         renderUsersTable(usersTbody, allUsers);
@@ -474,7 +469,6 @@ window.approveLeadAs = async function(userId, targetRole) {
 
         if (error) throw error;
 
-        // Descarte do comprovante pós-aprovação (LGPD)
         try {
             const { data: files } = await window.supabaseClient.storage.from('reseller-proofs').list('solicitacoes');
             const userFiles = files?.filter(f => f.name.startsWith(userId)) || [];
@@ -720,7 +714,7 @@ async function saveProduct(formData) {
     } catch (err) { alert('Erro ao salvar: ' + err.message); }
 }
 
-// 4. Regras Globais
+// 4. Regras Globais & Mercado Pago
 async function loadSettings() {
     try {
         const { data } = await window.supabaseClient.from('v2_settings').select('*').eq('id', 'global').single();
@@ -730,6 +724,13 @@ async function loadSettings() {
             document.getElementById('cfg-art-fee').value = data.art_fee;
             document.getElementById('cfg-min-area').value = data.min_area_sqm;
             document.getElementById('cfg-whatsapp').value = data.whatsapp_number || '+5511949141803';
+            
+            if (data.mercadopago_public_key) {
+                document.getElementById('cfg-mp-public-key').value = data.mercadopago_public_key;
+            }
+            if (data.mercadopago_access_token) {
+                document.getElementById('cfg-mp-access-token').value = data.mercadopago_access_token;
+            }
         }
     } catch (e) {}
 }
@@ -741,20 +742,28 @@ async function saveGlobalSettings(e) {
     const artFee = parseFloat(document.getElementById('cfg-art-fee').value) || 40;
     const minArea = parseFloat(document.getElementById('cfg-min-area').value) || 0.5;
     const whatsApp = document.getElementById('cfg-whatsapp').value;
+    const mpPublicKey = document.getElementById('cfg-mp-public-key')?.value;
+    const mpAccessToken = document.getElementById('cfg-mp-access-token')?.value;
+
+    const payload = {
+        reseller_margin: resMargin,
+        retail_margin: retMargin,
+        art_fee: artFee,
+        min_area_sqm: minArea,
+        whatsapp_number: whatsApp,
+        mercadopago_public_key: mpPublicKey,
+        updated_at: new Date().toISOString()
+    };
+
+    if (mpAccessToken && mpAccessToken.trim().length > 10) {
+        payload.mercadopago_access_token = mpAccessToken.trim();
+    }
 
     try {
-        const { error } = await window.supabaseClient.from('v2_settings').update({
-            reseller_margin: resMargin,
-            retail_margin: retMargin,
-            art_fee: artFee,
-            min_area_sqm: minArea,
-            whatsapp_number: whatsApp,
-            updated_at: new Date().toISOString()
-        }).eq('id', 'global');
-
+        const { error } = await window.supabaseClient.from('v2_settings').update(payload).eq('id', 'global');
         if (error) throw error;
-        alert('Regras Globais salvas com sucesso no banco de dados!');
-    } catch (err) { alert('Erro: ' + err.message); }
+        alert('Regras e Credenciais do Mercado Pago salvas com segurança no banco!');
+    } catch (err) { alert('Erro ao salvar: ' + err.message); }
 }
 
 function initAdminEventListeners() {
@@ -796,9 +805,7 @@ function initAdminEventListeners() {
             document.getElementById('modal-new-user').style.display = 'none';
             document.getElementById('form-create-user-manual').reset();
             await loadUsersAndResellers();
-        } catch (err) {
-            alert('Erro ao cadastrar usuário: ' + err.message);
-        }
+        } catch (err) { alert('Erro ao cadastrar usuário: ' + err.message); }
     });
 
     document.getElementById('new-prod-cost')?.addEventListener('input', (e) => {
