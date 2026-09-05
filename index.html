@@ -442,12 +442,12 @@
         </div>
     </footer>
 
-    <!-- Botão Flutuante do WhatsApp -->
+    <!-- Botão Flutuante do WhatsApp Original -->
     <a href="https://wa.me/5511968649673" class="whatsapp-float" target="_blank">
         <i class="fab fa-whatsapp"></i>
     </a>
 
-    <!-- Modal de Cadastro & Triagem (SEM MENÇÃO DE PORCENTAGEM DE MARGEM) -->
+    <!-- Modal de Cadastro com Upload Múltiplo e Conexão Inteligente -->
     <div id="modal-register-flow" class="modal-register-overlay">
         <div class="modal-register-box">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -469,18 +469,26 @@
                     <input type="radio" name="reg_role" value="revenda">
                     <div>
                         <strong>Revendedor Gráfico Autorizado</strong>
-                        <small style="display:block; color:#64748b; font-size:11px;">Condições exclusivas para profissionais e agências. Exige comprovação de 3 clientes ativos.</small>
+                        <small style="display:block; color:#64748b; font-size:11px;">Condições exclusivas para profissionais e agências. Exige envio de comprovação com 3 clientes ativos.</small>
                     </div>
                 </div>
+                
                 <input type="text" id="reg-name" placeholder="Seu Nome Completo" required style="width:100%; padding:10px; margin:8px 0; border:1px solid #cbd5e1; border-radius:6px; font-size:14px;">
                 <input type="text" id="reg-phone" placeholder="Telefone / WhatsApp Oficial" required style="width:100%; padding:10px; margin:8px 0; border:1px solid #cbd5e1; border-radius:6px; font-size:14px;">
                 <input type="text" id="reg-city" placeholder="Cidade - Estado (Ex: Mogi das Cruzes - SP)" required style="width:100%; padding:10px; margin:8px 0; border:1px solid #cbd5e1; border-radius:6px; font-size:14px;">
-                <div id="box-proof-upload" style="display:none; background:#f8fafc; padding:12px; border-radius:6px; margin:8px 0; border:1px dashed #cbd5e1;">
-                    <label style="font-size:12px; font-weight:700; color:#ea580c;">Comprovante de Atuação (Foto ou PDF de 3 clientes ativos):</label>
-                    <input type="file" id="reg-proof-file" accept="image/*,.pdf" style="font-size:12px; margin-top:6px; width:100%;">
-                    <small style="display:block; font-size:10px; color:#64748b; margin-top:4px;">🔒 LGPD: O documento é utilizado exclusivamente para triagem manual e descartado permanentemente após a decisão.</small>
+                
+                <!-- Upload Múltiplo para Revenda -->
+                <div id="box-proof-upload" style="display:none; background:#f8fafc; padding:14px; border-radius:6px; margin:8px 0; border:1px dashed #f97316;">
+                    <label style="font-size:12px; font-weight:700; color:#ea580c; display:block; margin-bottom:4px;">
+                        Comprovante de Atuação (Fotos ou PDFs de 3 clientes ativos):
+                    </label>
+                    <input type="file" id="reg-proof-file" accept="image/*,.pdf" multiple style="font-size:12px; margin-top:6px; width:100%;">
+                    <small style="display:block; font-size:11px; color:#64748b; margin-top:6px; line-height:1.4;">
+                        🔒 <strong>LGPD:</strong> Você pode selecionar vários arquivos de uma vez. O documento é utilizado exclusivamente para triagem manual e descartado permanentemente após a decisão.
+                    </small>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px; font-weight:700; margin-top:15px; background:#f97316;">
+                
+                <button type="submit" id="btn-submit-register" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px; font-weight:700; margin-top:15px; background:#f97316;">
                     Enviar para Triagem do Administrador
                 </button>
             </form>
@@ -538,29 +546,45 @@
                 document.getElementById('box-proof-upload').style.display = 'none';
             }
         }
+
+        // Submissão fluida: se não tiver Google conectado, conecta na hora
         document.getElementById('form-user-register')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const user = await window.AuthController?.getCurrentUser();
+
             if (!user) {
-                alert('Primeiro faça a autenticação com o Google para vincular seu cadastro com segurança.');
+                // Guarda dados na sessão para enviar logo após o login Google
+                sessionStorage.setItem('pending_reg_data', JSON.stringify({
+                    role: document.querySelector('input[name="reg_role"]:checked').value,
+                    name: document.getElementById('reg-name').value,
+                    phone: document.getElementById('reg-phone').value,
+                    city: document.getElementById('reg-city').value
+                }));
                 window.AuthController?.loginWithGoogle();
                 return;
             }
+
+            await executeRegistration(user);
+        });
+
+        async function executeRegistration(user) {
             const role = document.querySelector('input[name="reg_role"]:checked').value;
             const name = document.getElementById('reg-name').value;
             const phone = document.getElementById('reg-phone').value;
             const city = document.getElementById('reg-city').value;
             const fileInput = document.getElementById('reg-proof-file');
             
-            const btn = e.target.querySelector('button[type="submit"]');
-            btn.disabled = true;
-            btn.textContent = 'Enviando...';
+            const btn = document.getElementById('btn-submit-register');
+            if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
 
-            let proofFileName = null;
+            let filesUploaded = [];
             if (role === 'revenda' && fileInput.files.length > 0) {
-                const f = fileInput.files[0];
-                proofFileName = `${user.id}_comprovante_${Date.now()}.${f.name.split('.').pop()}`;
-                await window.supabaseClient.storage.from('reseller-proofs').upload(`solicitacoes/${proofFileName}`, f);
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    const f = fileInput.files[i];
+                    const fileName = `${user.id}_comprovante_${i}_${Date.now()}.${f.name.split('.').pop()}`;
+                    await window.supabaseClient.storage.from('reseller-proofs').upload(`solicitacoes/${fileName}`, f);
+                    filesUploaded.push(fileName);
+                }
             }
 
             await window.supabaseClient.from('v2_profiles').update({
@@ -569,13 +593,14 @@
                 address: { cidade: city },
                 requested_role: role,
                 status: 'pendente',
-                notes: proofFileName ? `Comprovante: ${proofFileName}` : 'Cadastro Cliente Final submetido'
+                notes: filesUploaded.length ? `Comprovantes: ${filesUploaded.join(', ')}` : 'Cadastro Cliente Final submetido'
             }).eq('id', user.id);
 
-            alert('Cadastro enviado para triagem! O administrador avaliará seus dados para liberar sua tabela de preços.');
+            alert('Cadastro enviado para triagem! O administrador Gilney Vidal avaliará seus dados para liberar sua tabela de preços.');
             closeRegisterModal();
             window.location.reload();
-        });
+        }
+        
         function filterByCategory(cat) {
             document.getElementById('produtos')?.scrollIntoView({ behavior: 'smooth' });
             window.dispatchEvent(new CustomEvent('filterProducts', { detail: { category: cat } }));
